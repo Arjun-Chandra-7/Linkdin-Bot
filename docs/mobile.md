@@ -89,3 +89,20 @@ is stated here rather than hidden.
 Notification actions deliberately stop at "open": you cannot approve a post
 from the notification shade, because you would be approving text you had not
 read. That is the one thing this system exists to prevent.
+
+## Verifying on an emulator
+
+If you want to try the app without a phone:
+
+```bash
+sdkmanager --install "system-images;android-34;google_apis;x86_64" emulator
+avdmanager create avd -n copilot_test -k "system-images;android-34;google_apis;x86_64" -d pixel_6
+emulator -avd copilot_test -no-window -gpu swiftshader_indirect &
+adb wait-for-device
+adb install -r mobile/app/build/outputs/apk/debug/app-debug.apk
+adb shell am start -n com.linkedincopilot.app/.MainActivity
+```
+
+Point the app at `http://10.0.2.2:8000` — that is the host machine as seen from
+inside the emulator. The app's network config already allows cleartext to that
+address.
