@@ -158,16 +158,23 @@ def analyze(text: str, *, claim_confidence: float = 0.8) -> QualityReport:
     repetition = _clamp(95 - repeated_openings * 12)
 
     # ---- Probabilities -------------------------------------------------
-    slop = 0.03
-    slop += min(len(cliches), 4) * 0.13
-    slop += min(len(slop_hits), 4) * 0.16
-    slop += 0.20 if one_liner_ratio > 0.55 and len(paragraphs) >= 4 else 0.0
-    slop += 0.15 if emoji_density > 0.035 else (0.06 if emoji_density > 0.015 else 0.0)
-    slop += 0.10 if len(generic_hashtags) >= 3 else 0.0
-    slop -= 0.12 if concrete_numbers >= 2 else 0.0
-    slop -= 0.10 if first_person_hits >= 4 else 0.0
-    slop -= 0.08 if technical_hits >= 6 else 0.0
-    ai_slop_probability = round(min(max(slop, 0.0), 0.99), 3)
+    # Penalties and bonuses are combined multiplicatively rather than by
+    # subtraction: substance should *discount* a slop signal, never cancel it
+    # outright. A strong post with emoji spam is still less clean than the
+    # same post without it.
+    penalty = 0.0
+    penalty += min(len(cliches), 4) * 0.13
+    penalty += min(len(slop_hits), 4) * 0.16
+    penalty += 0.20 if one_liner_ratio > 0.55 and len(paragraphs) >= 4 else 0.0
+    penalty += 0.15 if emoji_density > 0.035 else (0.06 if emoji_density > 0.015 else 0.0)
+    penalty += 0.10 if len(generic_hashtags) >= 3 else 0.0
+
+    discount = 1.0
+    discount *= 0.72 if concrete_numbers >= 2 else 1.0
+    discount *= 0.78 if first_person_hits >= 4 else 1.0
+    discount *= 0.82 if technical_hits >= 6 else 1.0
+
+    ai_slop_probability = round(min(max(0.03 + penalty * discount, 0.0), 0.99), 3)
 
     bait_probability = round(min(len(bait_hits) * 0.3 + len(generic_hashtags) * 0.05, 0.99), 3)
 
