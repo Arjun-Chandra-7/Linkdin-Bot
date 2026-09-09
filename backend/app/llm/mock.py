@@ -59,14 +59,18 @@ def _build_post(prompt: str, rng: random.Random) -> str:
     notes = _extract_notes(prompt)
     lower = prompt.lower()
 
+    # Headline-style hooks, because a topic may be a noun phrase ("the job
+    # queue") or an imperative lifted from a commit subject ("add retries").
+    # A colon reads correctly with both; "I spent this week on add retries"
+    # does not.
     if "failure" in lower or "broke" in lower:
-        hook = f"{topic} broke in a way I did not expect."
+        hook = f"Something broke this week: {topic}."
     elif "milestone" in lower:
-        hook = f"{topic} is finally running end to end."
+        hook = f"Milestone reached: {topic}."
     elif "opinion" in lower or "news" in lower:
         hook = f"A note on {topic}, from actually using it."
     else:
-        hook = f"I spent this week on {topic}."
+        hook = f"What I worked on this week: {topic}."
 
     body = [hook, ""]
     if notes:

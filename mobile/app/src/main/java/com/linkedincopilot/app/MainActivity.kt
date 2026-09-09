@@ -15,7 +15,6 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.InsertChart
 import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -139,12 +138,6 @@ private fun CopilotApp() {
                             label = { Text(tab.label) },
                         )
                     }
-                    NavigationBarItem(
-                        selected = currentRoute == "settings",
-                        onClick = { navController.navigate("settings") { launchSingleTop = true } },
-                        icon = { Icon(Icons.Filled.Settings, contentDescription = "Settings") },
-                        label = { Text("Settings") },
-                    )
                 }
             }
         },
@@ -162,6 +155,7 @@ private fun CopilotApp() {
                     onOpenCalendar = { navController.navigate("calendar") },
                     onOpenNetwork = { navController.navigate("network") },
                     onOpenAnalytics = { navController.navigate("analytics") },
+                    onOpenSettings = { navController.navigate("settings") },
                 )
             }
             composable("approvals") {
