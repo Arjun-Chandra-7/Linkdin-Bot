@@ -63,7 +63,7 @@ that says why you are reaching out, rather than inventing detail."""
 
 
 def fingerprint(profile_url: str, name: str) -> str:
-    basis = (profile_url.split("?")[0].rstrip("/").lower() or name.lower())
+    basis = profile_url.split("?")[0].rstrip("/").lower() or name.lower()
     return hashlib.sha256(basis.encode()).hexdigest()
 
 
@@ -93,7 +93,9 @@ def add_candidate(db: Session, candidate: CandidateInput) -> ConnectionCandidate
         role=(candidate.role or None),
         company=(candidate.company or None),
         profile_url=candidate.profile_url[:1000],
-        reason_for_recommendation=output.reason or candidate.context[:500] or "Relevant to your work.",
+        reason_for_recommendation=output.reason
+        or candidate.context[:500]
+        or "Relevant to your work.",
         relevance_score=max(0.0, min(1.0, output.relevance)),
         shared_interests=(candidate.shared_interests or output.shared_interests)[:8],
         suggested_note=(output.note or "")[:MAX_NOTE_CHARS],

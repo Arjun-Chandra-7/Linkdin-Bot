@@ -43,9 +43,15 @@ def draft_detail(db: Session, draft: Draft) -> DraftDetail:
     research_summary = None
     uncertainty = None
     if draft.idea_id:
-        research = db.execute(
-            select(Research).where(Research.idea_id == draft.idea_id).order_by(Research.id.desc())
-        ).scalars().first()
+        research = (
+            db.execute(
+                select(Research)
+                .where(Research.idea_id == draft.idea_id)
+                .order_by(Research.id.desc())
+            )
+            .scalars()
+            .first()
+        )
         if research:
             research_summary = research.summary
             uncertainty = research.uncertainty_notes

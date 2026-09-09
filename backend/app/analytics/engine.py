@@ -59,12 +59,16 @@ def engagement_of(snapshot: AnalyticsSnapshot) -> float | None:
 
 
 def latest_snapshot(db: Session, published_post_id: int) -> AnalyticsSnapshot | None:
-    return db.execute(
-        select(AnalyticsSnapshot)
-        .where(AnalyticsSnapshot.published_post_id == published_post_id)
-        .order_by(AnalyticsSnapshot.collected_at.desc())
-        .limit(1)
-    ).scalars().first()
+    return (
+        db.execute(
+            select(AnalyticsSnapshot)
+            .where(AnalyticsSnapshot.published_post_id == published_post_id)
+            .order_by(AnalyticsSnapshot.collected_at.desc())
+            .limit(1)
+        )
+        .scalars()
+        .first()
+    )
 
 
 def gather_observations(db: Session) -> list[Observation]:
@@ -88,7 +92,9 @@ def _confidence(sample_size: int, lift: float) -> ConfidenceLevel:
         return ConfidenceLevel.EARLY_SIGNAL
     if sample_size < 12:
         return ConfidenceLevel.MODERATE_CONFIDENCE
-    return ConfidenceLevel.STRONG_SIGNAL if abs(lift) >= 0.25 else ConfidenceLevel.MODERATE_CONFIDENCE
+    return (
+        ConfidenceLevel.STRONG_SIGNAL if abs(lift) >= 0.25 else ConfidenceLevel.MODERATE_CONFIDENCE
+    )
 
 
 def _length_bucket(char_count: int) -> str:
@@ -206,8 +212,15 @@ def compute_insights(db: Session) -> list[LearningInsight]:
     return insights
 
 
-def predict_performance(db: Session, *, post_type: str, hook_type: str, char_count: int,
-                        category: str, weekday: int | None = None) -> dict:
+def predict_performance(
+    db: Session,
+    *,
+    post_type: str,
+    hook_type: str,
+    char_count: int,
+    category: str,
+    weekday: int | None = None,
+) -> dict:
     """Estimate relative performance. Never presented as guaranteed reach."""
     insights = db.execute(select(LearningInsight)).scalars().all()
     if not insights or all(i.confidence == ConfidenceLevel.INSUFFICIENT_DATA for i in insights):

@@ -106,7 +106,8 @@ def extract_hook(text: str) -> str:
 _NUMBER_START = re.compile(r"^\s*\d")
 _FAILURE_WORDS = re.compile(
     r"\b(broke|broken|failed|failure|bug|crash|wrong|mistake|regression|outage|lost|"
-    r"deadlock|leak|corrupt|timeout|misconfigur)\w*", re.I
+    r"deadlock|leak|corrupt|timeout|misconfigur)\w*",
+    re.I,
 )
 
 

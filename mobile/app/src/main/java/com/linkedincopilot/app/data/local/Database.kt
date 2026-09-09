@@ -53,6 +53,7 @@ data class PendingAction(
     val editedContent: String?,
     val rejectionReason: String?,
     val note: String?,
+    val scheduledAt: String? = null,
     val createdAt: Long = System.currentTimeMillis(),
     val attempts: Int = 0,
     val lastError: String? = null,
@@ -97,7 +98,7 @@ interface CopilotDao {
     fun pendingCount(): Flow<Int>
 }
 
-@Database(entities = [CachedDraft::class, PendingAction::class], version = 1, exportSchema = false)
+@Database(entities = [CachedDraft::class, PendingAction::class], version = 2, exportSchema = false)
 abstract class CopilotDatabase : RoomDatabase() {
     abstract fun dao(): CopilotDao
 }

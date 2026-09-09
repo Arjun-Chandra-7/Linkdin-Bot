@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC
+
 import pytest
 from app.database.base import utcnow
 from app.database.models import Device, PairingCode
@@ -48,12 +50,12 @@ def test_revoked_device_loses_access(db, client):
     from datetime import timedelta
 
     code = generate_pairing_code()
-    db.add(PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() + timedelta(minutes=5)))
+    db.add(
+        PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() + timedelta(minutes=5))
+    )
     db.commit()
 
-    paired = client.post(
-        "/api/v1/auth/pair", json={"code": code, "device_name": "test phone"}
-    )
+    paired = client.post("/api/v1/auth/pair", json={"code": code, "device_name": "test phone"})
     assert paired.status_code == 200
     token = paired.json()["token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -67,7 +69,9 @@ def test_expired_pairing_code_is_rejected(db, client):
     from datetime import timedelta
 
     code = generate_pairing_code()
-    db.add(PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() - timedelta(seconds=1)))
+    db.add(
+        PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() - timedelta(seconds=1))
+    )
     db.commit()
 
     response = client.post("/api/v1/auth/pair", json={"code": code, "device_name": "late phone"})
@@ -78,23 +82,33 @@ def test_pairing_code_is_single_use(db, client):
     from datetime import timedelta
 
     code = generate_pairing_code()
-    db.add(PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() + timedelta(minutes=5)))
+    db.add(
+        PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() + timedelta(minutes=5))
+    )
     db.commit()
 
-    assert client.post("/api/v1/auth/pair", json={"code": code, "device_name": "first"}).status_code == 200
-    assert client.post("/api/v1/auth/pair", json={"code": code, "device_name": "second"}).status_code == 401
+    assert (
+        client.post("/api/v1/auth/pair", json={"code": code, "device_name": "first"}).status_code
+        == 200
+    )
+    assert (
+        client.post("/api/v1/auth/pair", json={"code": code, "device_name": "second"}).status_code
+        == 401
+    )
 
 
 def test_token_is_never_stored_in_plaintext(db, client):
     from datetime import timedelta
 
     code = generate_pairing_code()
-    db.add(PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() + timedelta(minutes=5)))
+    db.add(
+        PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() + timedelta(minutes=5))
+    )
     db.commit()
 
-    token = client.post(
-        "/api/v1/auth/pair", json={"code": code, "device_name": "phone"}
-    ).json()["token"]
+    token = client.post("/api/v1/auth/pair", json={"code": code, "device_name": "phone"}).json()[
+        "token"
+    ]
 
     device_id, secret = parse_token(token)
     device = db.get(Device, device_id)
@@ -109,11 +123,13 @@ def test_approval_requires_the_hash_of_what_was_shown(db, client, make_draft):
 
     draft = make_draft()
     code = generate_pairing_code()
-    db.add(PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() + timedelta(minutes=5)))
+    db.add(
+        PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() + timedelta(minutes=5))
+    )
     db.commit()
-    token = client.post(
-        "/api/v1/auth/pair", json={"code": code, "device_name": "phone"}
-    ).json()["token"]
+    token = client.post("/api/v1/auth/pair", json={"code": code, "device_name": "phone"}).json()[
+        "token"
+    ]
     headers = {"Authorization": f"Bearer {token}"}
 
     # No hash at all.
@@ -132,3 +148,40 @@ def test_approval_requires_the_hash_of_what_was_shown(db, client, make_draft):
     )
     assert stale.status_code == 409
     assert stale.json()["code"] == "content_changed"
+
+
+def test_approval_with_custom_scheduled_at(db, client, make_draft):
+    from datetime import datetime, timedelta
+
+    draft = make_draft()
+    code = generate_pairing_code()
+    db.add(
+        PairingCode(code_hash=hash_pairing_code(code), expires_at=utcnow() + timedelta(minutes=5))
+    )
+    db.commit()
+    token = client.post("/api/v1/auth/pair", json={"code": code, "device_name": "phone"}).json()[
+        "token"
+    ]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    target_time = (datetime.now(UTC) + timedelta(days=4)).isoformat()
+    res = client.post(
+        "/api/v1/approvals",
+        json={
+            "draft_id": draft.id,
+            "action": "APPROVE",
+            "expected_content_hash": draft.current_version.content_hash,
+            "scheduled_at": target_time,
+        },
+        headers=headers,
+    )
+    assert res.status_code == 200
+    assert res.json()["scheduled_at"] is not None
+
+    calendar_res = client.get("/api/v1/schedule/calendar", headers=headers)
+    assert calendar_res.status_code == 200
+    entries = calendar_res.json()
+    matching = next((e for e in entries if e["draft_id"] == draft.id), None)
+    assert matching is not None
+    assert matching["slot_id"] is not None
+    assert matching["scheduled_at"] is not None

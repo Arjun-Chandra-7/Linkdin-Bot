@@ -140,6 +140,7 @@ class OpenAICompatibleProvider(LLMProvider):
         if not self.api_key:
             return ProviderStatus(status="not_configured", detail="OPENAI_API_KEY is not set.")
         return ProviderStatus(
-            status="ok", detail=f"OpenAI-compatible endpoint configured ({self.model}).",
+            status="ok",
+            detail=f"OpenAI-compatible endpoint configured ({self.model}).",
             extra={"model": self.model, "base_url": self.base_url},
         )

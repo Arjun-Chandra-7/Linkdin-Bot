@@ -45,21 +45,17 @@ def main() -> int:
 
     print("\n== 2. Authentication ==")
     check("unauthenticated request is rejected", client.get("/api/v1/drafts").status_code == 401)
-    bad = client.post(
-        "/api/v1/auth/pair", json={"code": "ZZZZ-ZZZZ", "device_name": "attacker"}
-    )
+    bad = client.post("/api/v1/auth/pair", json={"code": "ZZZZ-ZZZZ", "device_name": "attacker"})
     check("invalid pairing code is rejected", bad.status_code == 401)
 
     code_output = subprocess.run(
         [args.python, str(REPO_ROOT / "scripts/pair.py"), "--no-qr"],
-        capture_output=True, text=True, cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
     ).stdout
-    code = next(
-        line.split()[-1] for line in code_output.splitlines() if "Pairing code" in line
-    )
-    paired = client.post(
-        "/api/v1/auth/pair", json={"code": code, "device_name": "E2E device"}
-    )
+    code = next(line.split()[-1] for line in code_output.splitlines() if "Pairing code" in line)
+    paired = client.post("/api/v1/auth/pair", json={"code": code, "device_name": "E2E device"})
     check("device pairs with a valid code", paired.status_code == 200)
     token = paired.json()["token"]
     client.headers["Authorization"] = f"Bearer {token}"
@@ -91,19 +87,27 @@ def main() -> int:
         draft["status"] == "READY_FOR_REVIEW",
         f"status={draft['status']} quality={draft['quality_score']}",
     )
-    check("multiple variants were produced", draft["version_count"] >= 2,
-          f"{draft['version_count']} versions")
+    check(
+        "multiple variants were produced",
+        draft["version_count"] >= 2,
+        f"{draft['version_count']} versions",
+    )
 
     print("\n== 4. Approval integrity ==")
     stale = client.post(
         "/api/v1/approvals",
         json={
-            "draft_id": draft_id, "action": "APPROVE",
-            "expected_content_hash": "0" * 64, "client_action_id": "stale-1",
+            "draft_id": draft_id,
+            "action": "APPROVE",
+            "expected_content_hash": "0" * 64,
+            "client_action_id": "stale-1",
         },
     )
-    check("approval with a stale content hash is refused", stale.status_code == 409,
-          stale.json().get("code", ""))
+    check(
+        "approval with a stale content hash is refused",
+        stale.status_code == 409,
+        stale.json().get("code", ""),
+    )
 
     no_hash = client.post(
         "/api/v1/approvals",
@@ -124,22 +128,30 @@ def main() -> int:
     approved = client.post(
         "/api/v1/approvals",
         json={
-            "draft_id": draft_id, "action": "APPROVE",
+            "draft_id": draft_id,
+            "action": "APPROVE",
             "expected_content_hash": original_hash,
-            "edited_content": edited, "client_action_id": "phone-act-1",
+            "edited_content": edited,
+            "client_action_id": "phone-act-1",
         },
     )
     check("edited draft is approved", approved.status_code == 200, approved.text[:80])
     result = approved.json()
-    check("approval binds to the edited content, not the original",
-          result["approved_content_hash"] != original_hash)
-    check("approved draft is scheduled", result["status"] == "SCHEDULED",
-          f"at {result['scheduled_at']}")
+    check(
+        "approval binds to the edited content, not the original",
+        result["approved_content_hash"] != original_hash,
+    )
+    check(
+        "approved draft is scheduled",
+        result["status"] == "SCHEDULED",
+        f"at {result['scheduled_at']}",
+    )
 
     replayed = client.post(
         "/api/v1/approvals",
         json={
-            "draft_id": draft_id, "action": "APPROVE",
+            "draft_id": draft_id,
+            "action": "APPROVE",
             "expected_content_hash": result["approved_content_hash"],
             "client_action_id": "phone-act-1",
         },
@@ -169,21 +181,25 @@ def main() -> int:
 
     notifications = client.get("/api/v1/notifications/pending").json()
     kinds = {n["type"] for n in notifications}
-    check("a publish reminder was queued for the phone", "PUBLISH_REMINDER" in kinds,
-          ", ".join(sorted(kinds)))
+    check(
+        "a publish reminder was queued for the phone",
+        "PUBLISH_REMINDER" in kinds,
+        ", ".join(sorted(kinds)),
+    )
 
     confirmed = client.post(f"/api/v1/schedule/{slot_id}/confirm-published")
-    check("manual publication can be confirmed", confirmed.status_code == 200,
-          confirmed.text[:80])
+    check("manual publication can be confirmed", confirmed.status_code == 200, confirmed.text[:80])
     final = client.get(f"/api/v1/drafts/{draft_id}").json()
     check("draft reaches PUBLISHED", final["status"] == "PUBLISHED", final["status"])
 
     print("\n== 6. Analytics and learning ==")
     overview = client.get("/api/v1/analytics/overview").json()
     check("published post is tracked", overview["published_count"] == 1)
-    check("empty state is shown instead of fake numbers",
-          bool(overview["empty_state"]) and overview["posts_with_metrics"] == 0,
-          overview.get("empty_state", "")[:50])
+    check(
+        "empty state is shown instead of fake numbers",
+        bool(overview["empty_state"]) and overview["posts_with_metrics"] == 0,
+        overview.get("empty_state", "")[:50],
+    )
 
     post_id = overview["posts"][0]["published_post_id"]
     metrics = client.post(
@@ -191,24 +207,29 @@ def main() -> int:
         json={"impressions": 1400, "reactions": 32, "comments": 6},
     )
     check("metrics can be entered manually", metrics.status_code == 200)
-    check("unreported metrics stay null rather than zero",
-          metrics.json()["reposts"] is None)
+    check("unreported metrics stay null rather than zero", metrics.json()["reposts"] is None)
 
     insights = client.post("/api/v1/analytics/recompute").json()
-    check("learning engine reports insufficient data honestly",
-          any(i["confidence"] == "INSUFFICIENT_DATA" for i in insights),
-          insights[0]["statement"][:60] if insights else "none")
+    check(
+        "learning engine reports insufficient data honestly",
+        any(i["confidence"] == "INSUFFICIENT_DATA" for i in insights),
+        insights[0]["statement"][:60] if insights else "none",
+    )
 
     print("\n== 7. Safety boundaries ==")
     spec = httpx.get(f"{base}/openapi.json", timeout=10).json()
     paths = " ".join(spec["paths"]).lower()
-    forbidden = [p for p in ("send-invite", "send_connection", "auto-connect", "bulk") if p in paths]
+    forbidden = [
+        p for p in ("send-invite", "send_connection", "auto-connect", "bulk") if p in paths
+    ]
     check("no endpoint sends connections or does bulk actions", not forbidden, str(forbidden))
 
     status_payload = client.get("/api/v1/system/status").json()
-    check("system status reports real component states",
-          status_payload["linkedin"]["status"] in {"ok", "not_configured"},
-          f"linkedin={status_payload['linkedin']['status']}, ai={status_payload['ai_provider']['status']}")
+    check(
+        "system status reports real component states",
+        status_payload["linkedin"]["status"] in {"ok", "not_configured"},
+        f"linkedin={status_payload['linkedin']['status']}, ai={status_payload['ai_provider']['status']}",
+    )
 
     print("\n" + "=" * 56)
     if failures:

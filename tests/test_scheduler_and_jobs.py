@@ -80,10 +80,12 @@ def test_same_job_running_twice_publishes_once(db, make_draft):
     from app.jobs.handlers import record_publication
 
     record_publication(
-        db, draft=draft, slot=slot, version=draft.current_version,
-        approval_id=slot.approval_id, method=__import__(
-            "app.database.enums", fromlist=["PublishMethod"]
-        ).PublishMethod.MANUAL,
+        db,
+        draft=draft,
+        slot=slot,
+        version=draft.current_version,
+        approval_id=slot.approval_id,
+        method=__import__("app.database.enums", fromlist=["PublishMethod"]).PublishMethod.MANUAL,
     )
     db.commit()
     assert db.query(PublishedPost).count() == 1
@@ -208,3 +210,48 @@ def test_future_jobs_are_not_claimed(db):
     enqueue(db, "discover_topics", {}, run_at=datetime.now(UTC) + timedelta(hours=2))
     db.commit()
     assert claim_due_jobs(db, "worker-1") == []
+
+
+def test_schedule_honors_explicit_requested_at(db, make_draft):
+    draft = make_draft("Post with explicit schedule time.")
+    result = submit_decision(
+        db, draft_id=draft.id, device_id="dev-1", action=ApprovalAction.APPROVE
+    )
+    custom_time = datetime.now(UTC) + timedelta(days=3, hours=5)
+    slot = schedule_approved_draft(
+        db, result.draft, result.version, result.approval, requested_at=custom_time
+    )
+    db.commit()
+    assert slot.scheduled_at == custom_time
+    assert draft.proposed_publish_at == custom_time
+
+
+def test_schedule_honors_draft_proposed_publish_at(db, make_draft):
+    draft = make_draft("Post with pre-existing proposed time from custom idea.")
+    custom_time = datetime.now(UTC) + timedelta(days=2, hours=3)
+    draft.proposed_publish_at = custom_time
+    db.commit()
+
+    result = submit_decision(
+        db, draft_id=draft.id, device_id="dev-1", action=ApprovalAction.APPROVE
+    )
+    # requested_at is None, so it falls back to draft.proposed_publish_at
+    slot = schedule_approved_draft(
+        db, result.draft, result.version, result.approval, requested_at=None
+    )
+    db.commit()
+    assert slot.scheduled_at == custom_time
+
+
+def test_reschedule_updates_slot_and_draft(db, make_draft):
+    draft = make_draft("Post to be rescheduled.")
+    slot = _approve_and_schedule(db, draft)
+    new_time = datetime.now(UTC) + timedelta(days=5)
+
+    from app.api.v1.schedule import reschedule
+
+    reschedule(slot_id=slot.id, scheduled_at=new_time, db=db, _=None)
+    db.refresh(slot)
+    db.refresh(draft)
+    assert slot.scheduled_at == new_time
+    assert draft.proposed_publish_at == new_time

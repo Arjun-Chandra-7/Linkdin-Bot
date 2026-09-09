@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
@@ -65,17 +65,22 @@ def calendar(
         db.execute(select(Draft).order_by(Draft.updated_at.desc()).limit(limit)).scalars().all()
     )
     for draft in drafts:
-        slot = db.execute(
-            select(ScheduledPost)
-            .where(ScheduledPost.draft_id == draft.id)
-            .order_by(ScheduledPost.id.desc())
-        ).scalars().first()
+        slot = (
+            db.execute(
+                select(ScheduledPost)
+                .where(ScheduledPost.draft_id == draft.id)
+                .order_by(ScheduledPost.id.desc())
+            )
+            .scalars()
+            .first()
+        )
         published = db.execute(
             select(PublishedPost).where(PublishedPost.draft_id == draft.id)
         ).scalar_one_or_none()
         entries.append(
             CalendarEntry(
                 draft_id=draft.id,
+                slot_id=slot.id if slot else None,
                 title=draft.title,
                 post_type=draft.post_type,
                 status=draft.status,
@@ -149,6 +154,11 @@ def reschedule(
     slot = _get_slot(db, slot_id)
     if slot.status not in {ScheduleStatus.PENDING, ScheduleStatus.FAILED}:
         raise ConflictError("Only a pending or failed post can be rescheduled.")
+    if scheduled_at.tzinfo is None:
+        scheduled_at = scheduled_at.replace(tzinfo=UTC)
+    else:
+        scheduled_at = scheduled_at.astimezone(UTC)
+
     slot.scheduled_at = scheduled_at
     slot.status = ScheduleStatus.PENDING
 
@@ -162,8 +172,10 @@ def reschedule(
         idempotency_key=f"publish:{slot.idempotency_key}",
     )
     draft = db.get(Draft, slot.draft_id)
-    if draft is not None and draft.status == DraftStatus.FAILED:
-        draft.status = DraftStatus.SCHEDULED
+    if draft is not None:
+        draft.proposed_publish_at = scheduled_at
+        if draft.status == DraftStatus.FAILED:
+            draft.status = DraftStatus.SCHEDULED
     db.commit()
     log_event(log, "POST_RESCHEDULED", slot_id=slot.id, scheduled_at=scheduled_at.isoformat())
     return ScheduledPostOut.model_validate(slot)

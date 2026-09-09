@@ -115,6 +115,7 @@ data class ApprovalRequest(
     @SerialName("rejection_reason") val rejectionReason: String? = null,
     val note: String? = null,
     @SerialName("client_action_id") val clientActionId: String? = null,
+    @SerialName("scheduled_at") val scheduledAt: String? = null,
 )
 
 @Serializable
@@ -160,6 +161,7 @@ data class ScheduledPost(
 @Serializable
 data class CalendarEntry(
     @SerialName("draft_id") val draftId: Int,
+    @SerialName("slot_id") val slotId: Int? = null,
     val title: String,
     @SerialName("post_type") val postType: String,
     val status: String,
@@ -282,6 +284,7 @@ data class ManualIdeaRequest(
     val category: String = "BUILD_LOG",
     @SerialName("post_type") val postType: String? = null,
     @SerialName("generate_now") val generateNow: Boolean = true,
+    @SerialName("scheduled_at") val scheduledAt: String? = null,
 )
 
 @Serializable

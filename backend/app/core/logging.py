@@ -13,8 +13,16 @@ import sys
 from typing import Any
 
 _SENSITIVE_KEYS = {
-    "token", "access_token", "refresh_token", "api_key", "secret",
-    "password", "cookie", "authorization", "pairing_code", "token_hash",
+    "token",
+    "access_token",
+    "refresh_token",
+    "api_key",
+    "secret",
+    "password",
+    "cookie",
+    "authorization",
+    "pairing_code",
+    "token_hash",
 }
 
 _configured = False

@@ -105,5 +105,7 @@ def run_migrations() -> list[str]:
                 text("INSERT INTO schema_migrations (id) VALUES (:id)"), {"id": migration.id}
             )
             newly_applied.append(migration.id)
-            log_event(log, "MIGRATION_APPLIED", migration=migration.id, description=migration.description)
+            log_event(
+                log, "MIGRATION_APPLIED", migration=migration.id, description=migration.description
+            )
     return newly_applied

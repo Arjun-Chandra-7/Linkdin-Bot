@@ -29,7 +29,13 @@ from app.security.tokens import generate_device_token, new_device_id, verify_pai
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-DEFAULT_SCOPES = ["drafts:read", "drafts:write", "approvals:write", "network:read", "analytics:read"]
+DEFAULT_SCOPES = [
+    "drafts:read",
+    "drafts:write",
+    "approvals:write",
+    "network:read",
+    "analytics:read",
+]
 
 # Brute-force guard for the one unauthenticated route. Codes are short enough
 # to be typed, so attempts are capped globally as well as per code.
@@ -55,7 +61,9 @@ def _rate_limit() -> None:
 
 
 @router.post("/pair", response_model=PairResponse)
-def pair_device(payload: PairRequest, request: Request, db: Session = Depends(get_db)) -> PairResponse:
+def pair_device(
+    payload: PairRequest, request: Request, db: Session = Depends(get_db)
+) -> PairResponse:
     _rate_limit()
     now = utcnow()
 
@@ -128,7 +136,9 @@ def whoami(device: Device = Depends(get_current_device)) -> DeviceInfo:
 
 
 @router.post("/revoke", status_code=status.HTTP_204_NO_CONTENT)
-def revoke_self(device: Device = Depends(get_current_device), db: Session = Depends(get_db)) -> None:
+def revoke_self(
+    device: Device = Depends(get_current_device), db: Session = Depends(get_db)
+) -> None:
     """Unpair this device. The token stops working immediately."""
     device.revoked = True
     device.revoked_at = utcnow()

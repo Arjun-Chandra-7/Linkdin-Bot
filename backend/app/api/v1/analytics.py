@@ -77,7 +77,9 @@ def overview(
     )
 
     best_format = None
-    format_insight = next((i for i in insights if i.dimension == "post_type" and (i.lift or 0) > 0), None)
+    format_insight = next(
+        (i for i in insights if i.dimension == "post_type" and (i.lift or 0) > 0), None
+    )
     if format_insight is not None:
         best_format = format_insight.segment
 

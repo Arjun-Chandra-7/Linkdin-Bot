@@ -45,8 +45,10 @@ def make_draft(db):
     from app.database.enums import ContentCategory, DraftStatus, PostType
     from app.database.models import Draft
 
-    def _make(content: str = "I shipped the approval flow today.\n\nIt broke twice before it worked.",
-              status: DraftStatus = DraftStatus.READY_FOR_REVIEW) -> Draft:
+    def _make(
+        content: str = "I shipped the approval flow today.\n\nIt broke twice before it worked.",
+        status: DraftStatus = DraftStatus.READY_FOR_REVIEW,
+    ) -> Draft:
         draft = Draft(
             title="Approval flow build log",
             post_type=PostType.BUILD_LOG,

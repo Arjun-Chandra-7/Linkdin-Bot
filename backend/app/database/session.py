@@ -32,6 +32,7 @@ def get_engine() -> Engine:
         _engine = create_engine(url, future=True, connect_args=connect_args)
 
         if url.startswith("sqlite"):
+
             @event.listens_for(_engine, "connect")
             def _sqlite_pragmas(dbapi_conn, _record):  # pragma: no cover - driver glue
                 cur = dbapi_conn.cursor()
@@ -41,6 +42,7 @@ def get_engine() -> Engine:
                 cur.execute("PRAGMA foreign_keys=ON")
                 cur.execute("PRAGMA busy_timeout=5000")
                 cur.close()
+
     return _engine
 
 

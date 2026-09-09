@@ -140,11 +140,7 @@ class LinkedInApiPublisher(Publisher):
             )
 
         post_urn = response.headers.get("x-restli-id") or response.headers.get("X-RestLi-Id")
-        url = (
-            f"https://www.linkedin.com/feed/update/{post_urn}/"
-            if post_urn
-            else None
-        )
+        url = f"https://www.linkedin.com/feed/update/{post_urn}/" if post_urn else None
         return PublishResult(
             method=PublishMethod.API,
             published=True,

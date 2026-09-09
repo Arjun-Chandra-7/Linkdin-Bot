@@ -91,7 +91,9 @@ class Source(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(200))
     type: Mapped[SourceType] = mapped_column(String(32), index=True)
     url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
-    category: Mapped[ContentCategory] = mapped_column(String(40), default=ContentCategory.AI_OBSERVATION)
+    category: Mapped[ContentCategory] = mapped_column(
+        String(40), default=ContentCategory.AI_OBSERVATION
+    )
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     weight: Mapped[float] = mapped_column(Float, default=1.0)
     last_fetched_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
@@ -109,7 +111,9 @@ class Idea(Base, TimestampMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     topic: Mapped[str] = mapped_column(String(500))
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
-    source_id: Mapped[int | None] = mapped_column(ForeignKey("sources.id"), nullable=True, index=True)
+    source_id: Mapped[int | None] = mapped_column(
+        ForeignKey("sources.id"), nullable=True, index=True
+    )
     source_ref: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     category: Mapped[ContentCategory] = mapped_column(String(40), index=True)
     why_it_matters: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -130,7 +134,9 @@ class Idea(Base, TimestampMixin):
     extra: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     source: Mapped[Source | None] = relationship(back_populates="ideas")
-    research: Mapped[list[Research]] = relationship(back_populates="idea", cascade="all, delete-orphan")
+    research: Mapped[list[Research]] = relationship(
+        back_populates="idea", cascade="all, delete-orphan"
+    )
     drafts: Mapped[list[Draft]] = relationship(back_populates="idea")
 
     __table_args__ = (UniqueConstraint("fingerprint", name="uq_idea_fingerprint"),)
@@ -168,7 +174,8 @@ class Draft(Base, TimestampMixin):
     category: Mapped[ContentCategory] = mapped_column(String(40), index=True)
     status: Mapped[DraftStatus] = mapped_column(String(32), default=DraftStatus.DRAFT, index=True)
     current_version_id: Mapped[int | None] = mapped_column(
-        ForeignKey("draft_versions.id", use_alter=True, name="fk_draft_current_version"), nullable=True
+        ForeignKey("draft_versions.id", use_alter=True, name="fk_draft_current_version"),
+        nullable=True,
     )
     generation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     proposed_publish_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
@@ -188,7 +195,9 @@ class Draft(Base, TimestampMixin):
     current_version: Mapped[DraftVersion | None] = relationship(
         foreign_keys=[current_version_id], post_update=True
     )
-    approvals: Mapped[list[Approval]] = relationship(back_populates="draft", cascade="all, delete-orphan")
+    approvals: Mapped[list[Approval]] = relationship(
+        back_populates="draft", cascade="all, delete-orphan"
+    )
 
 
 class DraftVersion(Base, TimestampMixin):
@@ -267,7 +276,9 @@ class ScheduledPost(Base, TimestampMixin):
     approval_id: Mapped[int] = mapped_column(ForeignKey("approvals.id"))
     scheduled_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Kolkata")
-    status: Mapped[ScheduleStatus] = mapped_column(String(24), default=ScheduleStatus.PENDING, index=True)
+    status: Mapped[ScheduleStatus] = mapped_column(
+        String(24), default=ScheduleStatus.PENDING, index=True
+    )
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Guarantees a draft is never scheduled (and therefore published) twice.
@@ -385,9 +396,7 @@ class Notification(Base, TimestampMixin):
     delivered_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     # Low-priority items are held until quiet hours end, then batched.
-    deliver_after: Mapped[datetime | None] = mapped_column(
-        UTCDateTime, nullable=True, index=True
-    )
+    deliver_after: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True, index=True)
     dedupe_key: Mapped[str | None] = mapped_column(String(160), unique=True, nullable=True)
 
 
@@ -442,7 +451,9 @@ class LearningInsight(Base, TimestampMixin):
     __tablename__ = "learning_insights"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    dimension: Mapped[str] = mapped_column(String(60), index=True)  # post_type | weekday | length ...
+    dimension: Mapped[str] = mapped_column(
+        String(60), index=True
+    )  # post_type | weekday | length ...
     segment: Mapped[str] = mapped_column(String(120))
     statement: Mapped[str] = mapped_column(Text)
     sample_size: Mapped[int] = mapped_column(Integer, default=0)

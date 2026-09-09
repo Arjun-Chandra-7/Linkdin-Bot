@@ -156,6 +156,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         draftId: Int,
         contentHash: String,
         editedContent: String? = null,
+        scheduledAt: String? = null,
         onDone: (String) -> Unit,
     ) = run {
         val response = repo.submitDecision(
@@ -163,6 +164,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             action = "APPROVE",
             expectedContentHash = contentHash,
             editedContent = editedContent,
+            scheduledAt = scheduledAt,
         )
         val text = when {
             response == null -> "Saved offline. It will sync when your laptop is reachable."
@@ -233,14 +235,38 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         onDone(repo.api.selectVersion(draftId, versionId))
     }
 
-    fun createIdea(topic: String, notes: String, category: String, onDone: (Int) -> Unit) = run {
-        val draft = repo.api.createFromIdea(ManualIdeaRequest(topic, notes, category))
+    fun createIdea(
+        topic: String,
+        notes: String,
+        category: String,
+        scheduledAt: String? = null,
+        onDone: (Int) -> Unit,
+    ) = run {
+        val draft = repo.api.createFromIdea(
+            ManualIdeaRequest(
+                topic = topic,
+                notes = notes,
+                category = category,
+                scheduledAt = scheduledAt,
+            )
+        )
         _state.value = _state.value.copy(
             message = if (draft.status == "READY_FOR_REVIEW") "Draft ready for review."
             else "Draft was written but did not pass the quality gate (${draft.status.lowercase()})."
         )
         onDone(draft.id)
         refreshAllInternal()
+    }
+
+    // ---- Schedule / network / analytics --------------------------------
+    fun reschedule(slotId: Int, newScheduledAt: String, onDone: () -> Unit = {}) = run {
+        repo.api.reschedule(slotId, newScheduledAt)
+        _state.value = _state.value.copy(
+            message = "Post rescheduled.",
+            calendar = repo.api.calendar(),
+        )
+        refreshAllInternal()
+        onDone()
     }
 
     // ---- Schedule / network / analytics --------------------------------

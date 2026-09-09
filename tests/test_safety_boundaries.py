@@ -15,10 +15,7 @@ BACKEND = Path(__file__).resolve().parents[1] / "backend" / "app"
 
 
 def _all_source() -> str:
-    return "\n".join(
-        path.read_text(encoding="utf-8")
-        for path in BACKEND.rglob("*.py")
-    ).lower()
+    return "\n".join(path.read_text(encoding="utf-8") for path in BACKEND.rglob("*.py")).lower()
 
 
 def test_no_browser_automation_dependency():
@@ -48,7 +45,16 @@ def test_no_bulk_or_engagement_endpoints():
     from app.main import create_app
 
     paths = " ".join(create_app().openapi()["paths"]).lower()
-    for banned in ("bulk", "mass", "/like", "/comment", "/dm", "/message", "auto-connect", "invite"):
+    for banned in (
+        "bulk",
+        "mass",
+        "/like",
+        "/comment",
+        "/dm",
+        "/message",
+        "auto-connect",
+        "invite",
+    ):
         assert banned not in paths, f"unsafe endpoint exposed: {banned}"
 
 

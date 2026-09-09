@@ -185,6 +185,7 @@ class Repository(private val context: Context, val store: SecureStore) {
         editedContent: String? = null,
         rejectionReason: String? = null,
         note: String? = null,
+        scheduledAt: String? = null,
     ): ApprovalResponse? {
         val clientActionId = UUID.randomUUID().toString()
         val request = ApprovalRequest(
@@ -195,6 +196,7 @@ class Repository(private val context: Context, val store: SecureStore) {
             rejectionReason = rejectionReason,
             note = note,
             clientActionId = clientActionId,
+            scheduledAt = scheduledAt,
         )
         return try {
             api.submitApproval(request)
@@ -208,6 +210,7 @@ class Repository(private val context: Context, val store: SecureStore) {
                     editedContent = editedContent,
                     rejectionReason = rejectionReason,
                     note = note,
+                    scheduledAt = scheduledAt,
                 )
             )
             com.linkedincopilot.app.notifications.NotificationWorker.triggerImmediateSync(context)
@@ -236,6 +239,7 @@ class Repository(private val context: Context, val store: SecureStore) {
                         rejectionReason = action.rejectionReason,
                         note = action.note,
                         clientActionId = action.clientActionId,
+                        scheduledAt = action.scheduledAt,
                     )
                 )
                 dao.removePending(action.clientActionId)

@@ -138,9 +138,7 @@ def analyze(text: str, *, claim_confidence: float = 0.8) -> QualityReport:
         22 + concrete_numbers * 15 + min(technical_hits, 8) * 4 + min(concrete_details, 12) * 3.5
     )
 
-    originality = _clamp(
-        92 - len(cliches) * 16 - len(slop_hits) * 18 - len(generic_hashtags) * 5
-    )
+    originality = _clamp(92 - len(cliches) * 16 - len(slop_hits) * 18 - len(generic_hashtags) * 5)
 
     # Readability peaks around 12-22 words per sentence.
     if avg_sentence_words < 5:

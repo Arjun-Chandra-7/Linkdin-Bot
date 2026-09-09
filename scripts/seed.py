@@ -29,21 +29,36 @@ from app.jobs.queue import enqueue  # noqa: E402
 # Public engineering/AI feeds. Deliberately a short list: the goal is a few
 # good sources, not a firehose that turns the account into a news reflector.
 DEFAULT_FEEDS: list[tuple[str, str, ContentCategory, float]] = [
-    ("Simon Willison", "https://simonwillison.net/atom/everything/",
-     ContentCategory.AI_OBSERVATION, 1.1),
-    ("Hacker News front page", "https://hnrss.org/frontpage?points=200",
-     ContentCategory.AI_OBSERVATION, 0.8),
-    ("Anthropic news", "https://www.anthropic.com/news/rss.xml",
-     ContentCategory.AI_OBSERVATION, 1.0),
-    ("Julia Evans", "https://jvns.ca/atom.xml",
-     ContentCategory.TECHNICAL_LESSON, 1.0),
+    (
+        "Simon Willison",
+        "https://simonwillison.net/atom/everything/",
+        ContentCategory.AI_OBSERVATION,
+        1.1,
+    ),
+    (
+        "Hacker News front page",
+        "https://hnrss.org/frontpage?points=200",
+        ContentCategory.AI_OBSERVATION,
+        0.8,
+    ),
+    (
+        "Anthropic news",
+        "https://www.anthropic.com/news/rss.xml",
+        ContentCategory.AI_OBSERVATION,
+        1.0,
+    ),
+    ("Julia Evans", "https://jvns.ca/atom.xml", ContentCategory.TECHNICAL_LESSON, 1.0),
 ]
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Seed sources and start the daily loop")
-    parser.add_argument("--github", action="append", default=[],
-                        help="owner/repo to follow (repeatable). Your own projects.")
+    parser.add_argument(
+        "--github",
+        action="append",
+        default=[],
+        help="owner/repo to follow (repeatable). Your own projects.",
+    )
     parser.add_argument("--no-feeds", action="store_true", help="Skip the default RSS feeds")
     parser.add_argument("--no-loop", action="store_true", help="Do not enqueue the daily loop")
     args = parser.parse_args()
@@ -59,8 +74,11 @@ def main() -> int:
             for name, url, category, weight in DEFAULT_FEEDS:
                 if url in existing:
                     continue
-                db.add(Source(name=name, type=SourceType.RSS, url=url,
-                              category=category, weight=weight))
+                db.add(
+                    Source(
+                        name=name, type=SourceType.RSS, url=url, category=category, weight=weight
+                    )
+                )
                 added += 1
                 print(f"  + feed    {name}")
 
@@ -69,9 +87,16 @@ def main() -> int:
             url = f"https://github.com/{repo}"
             if url in existing:
                 continue
-            db.add(Source(name=f"GitHub: {repo}", type=SourceType.GITHUB, url=url,
-                          category=ContentCategory.BUILD_LOG, weight=1.5,
-                          config={"repo": repo}))
+            db.add(
+                Source(
+                    name=f"GitHub: {repo}",
+                    type=SourceType.GITHUB,
+                    url=url,
+                    category=ContentCategory.BUILD_LOG,
+                    weight=1.5,
+                    config={"repo": repo},
+                )
+            )
             added += 1
             print(f"  + project {repo}")
 

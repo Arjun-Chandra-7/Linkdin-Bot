@@ -125,16 +125,16 @@ def build_writer_prompt(
 
 REWRITE_INSTRUCTIONS: dict[str, str] = {
     "shorten": "Cut this to roughly 60% of its length. Remove the least load-bearing "
-               "sentences. Keep every concrete detail.",
+    "sentences. Keep every concrete detail.",
     "expand": "Add one more layer of specific technical detail. Do not pad with "
-              "generalities or restate what is already said.",
+    "generalities or restate what is already said.",
     "more_technical": "Rewrite for a more technical reader: name mechanisms, trade-offs "
-                      "and constraints explicitly.",
+    "and constraints explicitly.",
     "more_casual": "Loosen the register. Same substance and same specifics, less formal.",
     "rewrite_hook": "Rewrite only the first line so it states something concrete and "
-                    "true. No teasing, no question, no suspense. Return the full post.",
+    "true. No teasing, no question, no suspense. Return the full post.",
     "rewrite_paragraph": "Rewrite the indicated paragraph only. Return the full post "
-                         "with that paragraph replaced.",
+    "with that paragraph replaced.",
     "regenerate": "Write a different post on the same topic, taking a different angle.",
 }
 

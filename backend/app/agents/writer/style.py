@@ -61,10 +61,14 @@ def learn_style_notes(db: Session, limit: int = 200) -> list[str]:
 
     # 2. Words that show up disproportionately in deletions.
     removed_tokens = Counter(
-        _phrase_tokens([p for row in feedback if row.kind == "edit" for p in row.removed_phrases or []])
+        _phrase_tokens(
+            [p for row in feedback if row.kind == "edit" for p in row.removed_phrases or []]
+        )
     )
     kept_tokens = Counter(
-        _phrase_tokens([p for row in feedback if row.kind == "edit" for p in row.added_phrases or []])
+        _phrase_tokens(
+            [p for row in feedback if row.kind == "edit" for p in row.added_phrases or []]
+        )
     )
     disliked = [
         word

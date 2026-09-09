@@ -157,6 +157,7 @@ def invalidate_approvals(db: Session, draft: Draft, reason: str) -> int:
 
 def _phrase_diff(before: str, after: str) -> tuple[list[str], list[str]]:
     """Sentence-level diff: what the user deleted vs. what they wrote instead."""
+
     def split(text: str) -> list[str]:
         return [s.strip() for s in canonicalize(text).replace("\n", " ").split(". ") if s.strip()]
 
@@ -354,16 +355,20 @@ def valid_approval_for(db: Session, draft: Draft) -> Approval | None:
     version = draft.current_version
     if version is None:
         return None
-    return db.execute(
-        select(Approval)
-        .where(
-            Approval.draft_id == draft.id,
-            Approval.valid.is_(True),
-            Approval.action == ApprovalAction.APPROVE,
-            Approval.approved_content_hash == version.content_hash,
+    return (
+        db.execute(
+            select(Approval)
+            .where(
+                Approval.draft_id == draft.id,
+                Approval.valid.is_(True),
+                Approval.action == ApprovalAction.APPROVE,
+                Approval.approved_content_hash == version.content_hash,
+            )
+            .order_by(Approval.id.desc())
         )
-        .order_by(Approval.id.desc())
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
 
 
 def assert_publishable(db: Session, draft: Draft) -> tuple[Approval, DraftVersion]:

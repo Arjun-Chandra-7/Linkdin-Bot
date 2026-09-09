@@ -120,9 +120,7 @@ def test_finds_real_patterns_once_there_is_history(db, publish_history):
     by_dimension = {i.dimension for i in insights}
     assert "post_type" in by_dimension
 
-    build_log = next(
-        i for i in insights if i.dimension == "post_type" and i.segment == "BUILD_LOG"
-    )
+    build_log = next(i for i in insights if i.dimension == "post_type" and i.segment == "BUILD_LOG")
     news = next(
         (i for i in insights if i.dimension == "post_type" and i.segment == "NEWS_WITH_ANALYSIS"),
         None,

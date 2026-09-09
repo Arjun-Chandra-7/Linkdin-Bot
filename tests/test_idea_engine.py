@@ -41,8 +41,11 @@ def test_scoring_prefers_experience_over_news():
         )
     )
     listicle = score_item(
-        _item("Top 10 AI tools you need in 2026", "A roundup of the best AI tools.",
-              published_at=datetime.now(UTC))
+        _item(
+            "Top 10 AI tools you need in 2026",
+            "A roundup of the best AI tools.",
+            published_at=datetime.now(UTC),
+        )
     )
 
     assert own_work["final_score"] > substantive_news["final_score"] > listicle["final_score"]
@@ -88,8 +91,12 @@ def test_mix_weighting_keeps_good_build_logs_above_the_threshold(db):
 def test_scores_keep_resolution_for_ranking(db):
     """If everything saturates at 1.0 the ordering carries no information."""
     items = [
-        _item(f"fix the {name} path", f"Details about {name} and how the {name} broke.",
-              ContentCategory.BUILD_LOG, published_at=datetime.now(UTC))
+        _item(
+            f"fix the {name} path",
+            f"Details about {name} and how the {name} broke.",
+            ContentCategory.BUILD_LOG,
+            published_at=datetime.now(UTC),
+        )
         for name in ("scheduler", "queue", "cache", "index", "token")
     ] + [
         _item(f"thoughts on {name}", "", ContentCategory.AI_OBSERVATION)
@@ -105,8 +112,12 @@ def test_scores_keep_resolution_for_ranking(db):
 
 
 def test_duplicate_items_are_not_ingested_twice(db):
-    item = _item("add WAL mode to sqlite", "It stopped the writer blocking readers.",
-                 ContentCategory.BUILD_LOG, url="https://example.com/1")
+    item = _item(
+        "add WAL mode to sqlite",
+        "It stopped the writer blocking readers.",
+        ContentCategory.BUILD_LOG,
+        url="https://example.com/1",
+    )
     assert len(ingest_items(db, [item])) == 1
     db.commit()
     assert ingest_items(db, [item]) == []
@@ -114,12 +125,19 @@ def test_duplicate_items_are_not_ingested_twice(db):
 
 
 def test_weak_ideas_are_rejected_before_any_model_call(db):
-    ingest_items(db, [
-        _item("Top 10 AI tools you need in 2026", "roundup"),
-        _item("add retry backoff to the publish job",
-              "Jobs failed forever without backoff; capped at an hour.",
-              ContentCategory.BUILD_LOG, published_at=datetime.now(UTC)),
-    ], category_weights=DEFAULTS["category_mix"])
+    ingest_items(
+        db,
+        [
+            _item("Top 10 AI tools you need in 2026", "roundup"),
+            _item(
+                "add retry backoff to the publish job",
+                "Jobs failed forever without backoff; capped at an hour.",
+                ContentCategory.BUILD_LOG,
+                published_at=datetime.now(UTC),
+            ),
+        ],
+        category_weights=DEFAULTS["category_mix"],
+    )
     db.commit()
 
     rejected = reject_weak(db, threshold=DEFAULT_THRESHOLD)
@@ -133,8 +151,9 @@ def test_weak_ideas_are_rejected_before_any_model_call(db):
 def test_stale_items_score_lower_than_fresh_ones():
     fresh = score_item(_item("model release notes", "details", published_at=datetime.now(UTC)))
     stale = score_item(
-        _item("model release notes", "details",
-              published_at=datetime.now(UTC) - timedelta(days=200))
+        _item(
+            "model release notes", "details", published_at=datetime.now(UTC) - timedelta(days=200)
+        )
     )
     assert fresh["timeliness_score"] > stale["timeliness_score"]
 

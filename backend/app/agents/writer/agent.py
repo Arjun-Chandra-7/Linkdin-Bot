@@ -74,16 +74,19 @@ def generate_drafts(db: Session, idea: Idea) -> WriteOutcome:
 
     style_notes = learn_style_notes(db)
     target_range = preferred_length_range(
-        db, tuple(get_setting(db, "preferred_length_range"))  # type: ignore[arg-type]
+        db,
+        tuple(get_setting(db, "preferred_length_range")),  # type: ignore[arg-type]
     )
     min_quality = int(get_setting(db, "quality_threshold"))
     max_slop = float(get_setting(db, "ai_slop_max_probability"))
     dup_threshold = float(get_setting(db, "duplicate_similarity_threshold"))
 
     # Only genuinely promising ideas are worth three generations.
-    variants = ["A", "B", "C"] if idea.final_score >= float(
-        get_setting(db, "multi_variant_threshold")
-    ) else ["A"]
+    variants = (
+        ["A", "B", "C"]
+        if idea.final_score >= float(get_setting(db, "multi_variant_threshold"))
+        else ["A"]
+    )
 
     draft = Draft(
         idea_id=idea.id,
@@ -116,9 +119,7 @@ def generate_drafts(db: Session, idea: Idea) -> WriteOutcome:
             target_range=target_range,
             style_notes=style_notes,
         )
-        response = llm.generate(
-            prompt, system=BASE_SYSTEM, task="generate_draft", max_tokens=1600
-        )
+        response = llm.generate(prompt, system=BASE_SYSTEM, task="generate_draft", max_tokens=1600)
         text = canonicalize(response.text)
         if not text:
             continue
@@ -171,13 +172,17 @@ def generate_drafts(db: Session, idea: Idea) -> WriteOutcome:
         )
         return WriteOutcome(draft=draft, accepted=False, reason="duplicate", quality=best_report)
 
-    if best_report["recommendation"] == "REJECT" or best_quality < min_quality or (
-        best_report["ai_slop_probability"] > max_slop
+    if (
+        best_report["recommendation"] == "REJECT"
+        or best_quality < min_quality
+        or (best_report["ai_slop_probability"] > max_slop)
     ):
         # Rejected by the machine, so the user's phone never sees it.
         draft.status = DraftStatus.REJECTED
         draft.rejection_reason = "SOUNDS_AI_GENERATED"
-        draft.rejection_note = "; ".join(best_report["issues"][:3]) or "Below the quality threshold."
+        draft.rejection_note = (
+            "; ".join(best_report["issues"][:3]) or "Below the quality threshold."
+        )
         idea.status = IdeaStatus.ARCHIVED
         db.flush()
         log_event(
@@ -276,5 +281,7 @@ def rewrite(
     if draft.status in {DraftStatus.SAVED_FOR_LATER, DraftStatus.QUALITY_CHECK}:
         draft.status = DraftStatus.READY_FOR_REVIEW
     db.flush()
-    log_event(log, "DRAFT_REWRITTEN", draft_id=draft.id, operation=operation, quality=report.quality)
+    log_event(
+        log, "DRAFT_REWRITTEN", draft_id=draft.id, operation=operation, quality=report.quality
+    )
     return draft

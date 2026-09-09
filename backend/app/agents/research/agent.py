@@ -131,7 +131,9 @@ def research_idea(db: Session, idea: Idea, *, fetch_source_page: bool = True) ->
         references=references,
         contradictions=output.contradictions,
         uncertainty_notes=output.uncertainty_notes or None,
-        confidence=max(0.0, min(1.0, output.confidence if not is_own_work else max(output.confidence, 0.8))),
+        confidence=max(
+            0.0, min(1.0, output.confidence if not is_own_work else max(output.confidence, 0.8))
+        ),
     )
     db.add(research)
     db.flush()

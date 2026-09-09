@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel, Field
@@ -151,6 +152,7 @@ class ManualIdeaRequest(BaseModel):
     category: ContentCategory = ContentCategory.BUILD_LOG
     post_type: PostType | None = None
     generate_now: bool = True
+    scheduled_at: datetime | None = None
 
 
 @router.post("/from-idea", response_model=DraftDetail | dict)
@@ -194,6 +196,13 @@ def create_from_idea(
     from app.agents.writer.agent import generate_drafts
 
     outcome = generate_drafts(db, idea)
+    if outcome.draft is not None and payload.scheduled_at is not None:
+        when = payload.scheduled_at
+        if when.tzinfo is None:
+            when = when.replace(tzinfo=UTC)
+        else:
+            when = when.astimezone(UTC)
+        outcome.draft.proposed_publish_at = when
     db.commit()
     log_event(log, "MANUAL_IDEA_SUBMITTED", idea_id=idea.id, device_id=device.id)
     if outcome.draft is None:

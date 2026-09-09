@@ -194,6 +194,13 @@ class ApiClient(private val store: SecureStore) {
         }
     }
 
+    suspend fun reschedule(slotId: Int, scheduledAt: String): ScheduledPost = request {
+        client.post(url("/api/v1/schedule/$slotId/reschedule")) {
+            auth()
+            parameter("scheduled_at", scheduledAt)
+        }
+    }
+
     suspend fun cancelSchedule(slotId: Int): ScheduledPost =
         request { client.delete(url("/api/v1/schedule/$slotId")) { auth() } }
 

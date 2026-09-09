@@ -1,7 +1,11 @@
 package com.linkedincopilot.app.ui
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import android.content.Context
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
@@ -14,6 +18,59 @@ object Fmt {
     private fun parse(iso: String?): Instant? =
         iso?.let { runCatching { Instant.parse(if (it.endsWith("Z")) it else "${it}Z") }.getOrNull() }
             ?: iso?.let { runCatching { Instant.parse(it) }.getOrNull() }
+
+    fun parseZoned(iso: String?): ZonedDateTime? {
+        val instant = parse(iso) ?: return null
+        return instant.atZone(ZoneId.systemDefault())
+    }
+
+    fun toIso(zoned: ZonedDateTime): String {
+        return DateTimeFormatter.ISO_INSTANT.format(zoned.toInstant())
+    }
+
+    fun todayAt(hour: Int, minute: Int = 0): ZonedDateTime {
+        val now = ZonedDateTime.now()
+        return now.withHour(hour).withMinute(minute).withSecond(0).withNano(0)
+    }
+
+    fun tomorrowAt(hour: Int, minute: Int = 0): ZonedDateTime {
+        return todayAt(hour, minute).plusDays(1)
+    }
+
+    fun pickDateTime(
+        context: Context,
+        initialIso: String? = null,
+        onPicked: (String) -> Unit,
+    ) {
+        val current = parseZoned(initialIso) ?: ZonedDateTime.now().plusHours(2)
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                TimePickerDialog(
+                    context,
+                    { _, hourOfDay, minute ->
+                        val chosen = current
+                            .withYear(year)
+                            .withMonth(month + 1)
+                            .withDayOfMonth(dayOfMonth)
+                            .withHour(hourOfDay)
+                            .withMinute(minute)
+                            .withSecond(0)
+                            .withNano(0)
+                        onPicked(toIso(chosen))
+                    },
+                    current.hour,
+                    current.minute,
+                    false,
+                ).show()
+            },
+            current.year,
+            current.monthValue - 1,
+            current.dayOfMonth,
+        ).apply {
+            datePicker.minDate = System.currentTimeMillis() - 1000
+        }.show()
+    }
 
     fun dateTime(iso: String?): String {
         val instant = parse(iso) ?: return "—"

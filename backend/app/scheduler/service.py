@@ -46,7 +46,9 @@ def _parse_slot(entry: dict) -> tuple[int, time] | None:
         return None
 
 
-def candidate_slots(db: Session, *, after: datetime | None = None, count: int = 20) -> list[datetime]:
+def candidate_slots(
+    db: Session, *, after: datetime | None = None, count: int = 20
+) -> list[datetime]:
     """Upcoming configured slots as UTC datetimes, soonest first."""
     tz = get_timezone(db)
     start = (after or utcnow()).astimezone(tz)
@@ -70,14 +72,24 @@ def candidate_slots(db: Session, *, after: datetime | None = None, count: int = 
 
 
 def _occupied_times(db: Session) -> list[datetime]:
-    pending = db.execute(
-        select(ScheduledPost.scheduled_at).where(
-            ScheduledPost.status.in_([ScheduleStatus.PENDING, ScheduleStatus.PUBLISHING])
+    pending = (
+        db.execute(
+            select(ScheduledPost.scheduled_at).where(
+                ScheduledPost.status.in_([ScheduleStatus.PENDING, ScheduleStatus.PUBLISHING])
+            )
         )
-    ).scalars().all()
-    published = db.execute(
-        select(PublishedPost.published_at).where(PublishedPost.published_at > utcnow() - timedelta(days=14))
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
+    published = (
+        db.execute(
+            select(PublishedPost.published_at).where(
+                PublishedPost.published_at > utcnow() - timedelta(days=14)
+            )
+        )
+        .scalars()
+        .all()
+    )
     # UTCDateTime guarantees these come back timezone-aware.
     return [*pending, *published]
 
@@ -114,7 +126,10 @@ def schedule_approved_draft(
     existing = db.execute(
         select(ScheduledPost).where(ScheduledPost.idempotency_key == key)
     ).scalar_one_or_none()
-    if existing is not None and existing.status in {ScheduleStatus.PENDING, ScheduleStatus.PUBLISHING}:
+    if existing is not None and existing.status in {
+        ScheduleStatus.PENDING,
+        ScheduleStatus.PUBLISHING,
+    }:
         return existing
     if existing is not None and existing.status == ScheduleStatus.PUBLISHED:
         raise ConflictError(
@@ -123,7 +138,10 @@ def schedule_approved_draft(
             recovery="Edit the post if you want to publish something different.",
         )
 
-    when = requested_at.astimezone(UTC) if requested_at else next_available_slot(db)
+    target_time = requested_at or draft.proposed_publish_at
+    if target_time is not None and target_time.tzinfo is None:
+        target_time = target_time.replace(tzinfo=UTC)
+    when = target_time.astimezone(UTC) if target_time else next_available_slot(db)
     if existing is not None:
         # A previously cancelled/failed slot for identical content is reused.
         existing.status = ScheduleStatus.PENDING
@@ -158,7 +176,9 @@ def schedule_approved_draft(
         run_at=when,
         idempotency_key=f"publish:{slot.idempotency_key}",
     )
-    log_event(log, "POST_SCHEDULED", draft_id=draft.id, scheduled_at=when.isoformat(), slot_id=slot.id)
+    log_event(
+        log, "POST_SCHEDULED", draft_id=draft.id, scheduled_at=when.isoformat(), slot_id=slot.id
+    )
     return slot
 
 

@@ -17,12 +17,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.linkedincopilot.app.ui.AppState
 import com.linkedincopilot.app.ui.AppViewModel
 import com.linkedincopilot.app.ui.Fmt
+import com.linkedincopilot.app.ui.components.CreateIdeaDialog
 import com.linkedincopilot.app.ui.components.Metric
 import com.linkedincopilot.app.ui.components.SectionHeader
 import com.linkedincopilot.app.ui.components.postTypeLabel
@@ -45,6 +50,15 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
 ) {
     val home = state.home
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    if (showCreateDialog) {
+        CreateIdeaDialog(
+            vm = vm,
+            onDismiss = { showCreateDialog = false },
+            onDraftCreated = { onOpenApprovals() },
+        )
+    }
 
     LazyColumn(
         Modifier.fillMaxWidth().padding(horizontal = 16.dp),
@@ -191,8 +205,12 @@ fun HomeScreen(
         }
 
         item {
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp)) {
+            Row(
+                Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 TextButton(onClick = { vm.runDiscovery() }) { Text("Look for ideas now") }
+                TextButton(onClick = { showCreateDialog = true }) { Text("Write custom idea") }
             }
         }
     }

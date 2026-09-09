@@ -22,7 +22,8 @@ log = logging.getLogger(__name__)
 # Assertions with hard numbers are the highest-risk thing in a draft.
 NUMERIC_CLAIM = re.compile(
     r"[^.!?\n]*\b\d+(?:\.\d+)?\s*(?:%|x|ms|s|seconds?|minutes?|hours?|days?|weeks?|"
-    r"users?|customers?|requests?|times faster|k|m|gb|mb)\b[^.!?\n]*", re.I
+    r"users?|customers?|requests?|times faster|k|m|gb|mb)\b[^.!?\n]*",
+    re.I,
 )
 
 
@@ -63,8 +64,11 @@ def check_draft(db: Session, content: str, research: Research | None) -> dict:
     # definition - say so rather than pretending it was checked.
     if research is None or not evidence_lines:
         flagged = [
-            {"statement": statement, "reason": "No research evidence was gathered for this post.",
-             "severity": "review"}
+            {
+                "statement": statement,
+                "reason": "No research evidence was gathered for this post.",
+                "severity": "review",
+            }
             for statement in numeric_statements
         ]
         report = {
@@ -76,8 +80,13 @@ def check_draft(db: Session, content: str, research: Research | None) -> dict:
         return report
 
     prompt = (
-        "EVIDENCE:\n" + "\n".join(evidence_lines)
-        + (f"\n\nKNOWN UNCERTAINTY: {research.uncertainty_notes}" if research.uncertainty_notes else "")
+        "EVIDENCE:\n"
+        + "\n".join(evidence_lines)
+        + (
+            f"\n\nKNOWN UNCERTAINTY: {research.uncertainty_notes}"
+            if research.uncertainty_notes
+            else ""
+        )
         + f"\n\nDRAFT POST:\n{content}\n\nFlag only statements the evidence does not support."
     )
 

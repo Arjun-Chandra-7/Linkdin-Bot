@@ -79,9 +79,7 @@ def publish_post(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
             payload={"draft_id": draft.id, "code": exc.code, "recovery": exc.recovery},
             dedupe_key=f"publish-blocked:{slot.id}",
         )
-        log_event(
-            log, "PUBLISH_BLOCKED", level=logging.WARNING, draft_id=draft.id, reason=exc.code
-        )
+        log_event(log, "PUBLISH_BLOCKED", level=logging.WARNING, draft_id=draft.id, reason=exc.code)
         return {"blocked": exc.code}
 
     slot.status = ScheduleStatus.PUBLISHING
@@ -313,9 +311,13 @@ def generate_draft(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
     if outcome.accepted and outcome.draft.current_version is not None:
         from sqlalchemy import select
 
-        research = db.execute(
-            select(Research).where(Research.idea_id == idea.id).order_by(Research.id.desc())
-        ).scalars().first()
+        research = (
+            db.execute(
+                select(Research).where(Research.idea_id == idea.id).order_by(Research.id.desc())
+            )
+            .scalars()
+            .first()
+        )
         report = check_draft(db, outcome.draft.current_version.content, research)
         outcome.draft.current_version.fact_check = report
         if report.get("unsupported_claims"):
@@ -346,9 +348,11 @@ def collect_analytics(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
     if post is None:
         return {"skipped": "post no longer exists"}
 
-    existing = db.execute(
-        select(AnalyticsSnapshot).where(AnalyticsSnapshot.published_post_id == post.id)
-    ).scalars().first()
+    existing = (
+        db.execute(select(AnalyticsSnapshot).where(AnalyticsSnapshot.published_post_id == post.id))
+        .scalars()
+        .first()
+    )
 
     if existing is None:
         notify(
@@ -415,9 +419,7 @@ def discover_connections(db: Session, payload: dict[str, Any]) -> dict[str, Any]
     if payload.get("scan_sources", True):
         from app.database.models import Idea
 
-        recent = db.execute(
-            select(Idea).order_by(Idea.id.desc()).limit(40)
-        ).scalars().all()
+        recent = db.execute(select(Idea).order_by(Idea.id.desc()).limit(40)).scalars().all()
         for idea in recent:
             candidates.extend(
                 extract_candidates_from_text(

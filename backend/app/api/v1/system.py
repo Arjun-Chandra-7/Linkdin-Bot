@@ -55,7 +55,9 @@ def system_status(
 
     try:
         db.execute(select(1))
-        database = ComponentStatus(name="database", status="ok", detail=settings.database_url.split("/")[-1])
+        database = ComponentStatus(
+            name="database", status="ok", detail=settings.database_url.split("/")[-1]
+        )
     except Exception as exc:  # pragma: no cover
         database = ComponentStatus(name="database", status="error", detail=str(exc)[:200])
 
@@ -69,9 +71,11 @@ def system_status(
         name="linkedin", status=publisher_status.status, detail=publisher_status.detail
     )
 
-    next_job = db.execute(
-        select(Job).where(Job.status == JobStatus.QUEUED).order_by(Job.run_at).limit(1)
-    ).scalars().first()
+    next_job = (
+        db.execute(select(Job).where(Job.status == JobStatus.QUEUED).order_by(Job.run_at).limit(1))
+        .scalars()
+        .first()
+    )
     failed_jobs = _count(db, Job, Job.status.in_([JobStatus.DEAD, JobStatus.FAILED]))
 
     last_discovery = db.execute(
@@ -83,11 +87,7 @@ def system_status(
     scheduler = ComponentStatus(
         name="scheduler",
         status="ok" if settings.scheduler_enabled else "disabled",
-        detail=(
-            f"Next job at {next_job.run_at.isoformat()}"
-            if next_job
-            else "No jobs queued."
-        ),
+        detail=(f"Next job at {next_job.run_at.isoformat()}" if next_job else "No jobs queued."),
     )
 
     return SystemStatus(
@@ -108,12 +108,16 @@ def system_status(
 def home(db: Session = Depends(get_db), _: Device = Depends(get_current_device)) -> HomeSummary:
     week_ago = utcnow() - timedelta(days=7)
 
-    next_slot = db.execute(
-        select(ScheduledPost)
-        .where(ScheduledPost.status == ScheduleStatus.PENDING)
-        .order_by(ScheduledPost.scheduled_at)
-        .limit(1)
-    ).scalars().first()
+    next_slot = (
+        db.execute(
+            select(ScheduledPost)
+            .where(ScheduledPost.status == ScheduleStatus.PENDING)
+            .order_by(ScheduledPost.scheduled_at)
+            .limit(1)
+        )
+        .scalars()
+        .first()
+    )
     next_title = None
     if next_slot is not None:
         draft = db.get(Draft, next_slot.draft_id)

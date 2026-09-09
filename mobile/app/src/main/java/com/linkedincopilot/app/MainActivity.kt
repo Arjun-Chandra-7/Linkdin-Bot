@@ -160,7 +160,7 @@ private fun CopilotApp() {
             }
             composable("approvals") {
                 LaunchedEffect(Unit) { vm.refreshAll() }
-                ApprovalsScreen(state) { id -> navController.navigate("draft/$id") }
+                ApprovalsScreen(vm, state) { id -> navController.navigate("draft/$id") }
             }
             composable("draft/{id}") { entry ->
                 val id = entry.arguments?.getString("id")?.toIntOrNull()

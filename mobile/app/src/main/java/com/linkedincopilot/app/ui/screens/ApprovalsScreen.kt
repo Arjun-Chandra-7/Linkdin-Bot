@@ -2,6 +2,7 @@ package com.linkedincopilot.app.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,52 +10,97 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.linkedincopilot.app.data.DraftSummary
+import com.linkedincopilot.app.data.local.PendingAction
 import com.linkedincopilot.app.ui.AppState
+import com.linkedincopilot.app.ui.AppViewModel
 import com.linkedincopilot.app.ui.Fmt
+import com.linkedincopilot.app.ui.components.CreateIdeaDialog
 import com.linkedincopilot.app.ui.components.EmptyState
 import com.linkedincopilot.app.ui.components.StatusPill
 import com.linkedincopilot.app.ui.components.postTypeLabel
 import com.linkedincopilot.app.ui.components.statusColor
 import com.linkedincopilot.app.ui.components.statusLabel
 
-import com.linkedincopilot.app.data.local.PendingAction
-
 @Composable
-fun ApprovalsScreen(state: AppState, onOpen: (Int) -> Unit) {
-    if (state.drafts.isEmpty() && !state.loading) {
-        EmptyState(
-            title = "Nothing to review",
-            body = "When the copilot writes something worth your time, it will appear here. "
-                + "Weak drafts are rejected before they reach your phone.",
+fun ApprovalsScreen(
+    vm: AppViewModel,
+    state: AppState,
+    onOpen: (Int) -> Unit,
+) {
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    if (showCreateDialog) {
+        CreateIdeaDialog(
+            vm = vm,
+            onDismiss = { showCreateDialog = false },
+            onDraftCreated = { draftId -> onOpen(draftId) },
         )
-        return
     }
 
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        item {
-            Text(
-                "Approvals",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 20.dp, bottom = 4.dp),
+    Scaffold(
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = { showCreateDialog = true },
+                icon = { Icon(Icons.Filled.Add, contentDescription = "Add custom idea") },
+                text = { Text("New Idea") },
             )
         }
-        items(state.drafts, key = { it.id }) { draft ->
-            val pending = state.pendingActionMap[draft.id]
-            DraftCard(draft, pending) { onOpen(draft.id) }
+    ) { padding ->
+        if (state.drafts.isEmpty() && !state.loading) {
+            Box(Modifier.fillMaxSize().padding(padding)) {
+                EmptyState(
+                    title = "Nothing to review",
+                    body = "When the copilot writes something worth your time, it will appear here. "
+                        + "You can also write custom posts around your own ideas.",
+                    actionLabel = "Create custom idea",
+                    onAction = { showCreateDialog = true },
+                )
+            }
+            return@Scaffold
         }
-        item { Column(Modifier.padding(bottom = 24.dp)) {} }
+
+        LazyColumn(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Text(
+                        "Approvals",
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                }
+            }
+            items(state.drafts, key = { it.id }) { draft ->
+                val pending = state.pendingActionMap[draft.id]
+                DraftCard(draft, pending) { onOpen(draft.id) }
+            }
+            item { Column(Modifier.padding(bottom = 80.dp)) {} }
+        }
     }
 }
 

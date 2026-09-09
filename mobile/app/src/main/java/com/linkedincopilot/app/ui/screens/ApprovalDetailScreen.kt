@@ -42,6 +42,7 @@ import com.linkedincopilot.app.ui.AppViewModel
 import com.linkedincopilot.app.ui.components.ErrorState
 import com.linkedincopilot.app.ui.components.KeyValueRow
 import com.linkedincopilot.app.ui.components.LoadingState
+import com.linkedincopilot.app.ui.components.ScheduleTimeSelector
 import com.linkedincopilot.app.ui.components.SectionHeader
 import com.linkedincopilot.app.ui.components.StatusPill
 import com.linkedincopilot.app.ui.components.postTypeLabel
@@ -88,6 +89,7 @@ fun ApprovalDetailScreen(
     onBack: () -> Unit,
 ) {
     var detail by remember { mutableStateOf<DraftDetail?>(null) }
+    var selectedScheduledAt by remember { mutableStateOf<String?>(null) }
     var originalContent by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf(false) }
     var editedText by remember { mutableStateOf("") }
@@ -104,6 +106,9 @@ fun ApprovalDetailScreen(
                 detail = it
                 editedText = it.currentVersion?.content.orEmpty()
                 originalContent = it.currentVersion?.content
+                if (selectedScheduledAt == null) {
+                    selectedScheduledAt = it.proposedPublishAt
+                }
                 loadError = null
             }
             .onFailure { loadError = it.message }
@@ -399,6 +404,16 @@ fun ApprovalDetailScreen(
                         }
                     }
 
+                    // ---- Schedule Time Frame ----
+                    if (!showReject && pending == null) {
+                        SectionHeader("Scheduled publish time")
+                        ScheduleTimeSelector(
+                            selectedIso = selectedScheduledAt,
+                            onSelected = { selectedScheduledAt = it },
+                            label = "Select time frame to post",
+                        )
+                    }
+
                     // ---- Primary actions ----
                     if (!showReject) {
                         if (pending != null) {
@@ -426,7 +441,7 @@ fun ApprovalDetailScreen(
                                         val edited = editedText.takeIf {
                                             editing && it != (originalContent ?: version.content)
                                         }
-                                        vm.approve(draftId, hash, edited) { onBack() }
+                                        vm.approve(draftId, hash, edited, scheduledAt = selectedScheduledAt) { onBack() }
                                     },
                                     enabled = !state.loading && version != null,
                                     modifier = Modifier.weight(1f),

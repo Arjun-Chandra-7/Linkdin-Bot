@@ -65,9 +65,7 @@ def enqueue(
     except IntegrityError:
         # Lost a race on the unique key: return the winner.
         db.rollback()
-        return db.execute(
-            select(Job).where(Job.idempotency_key == idempotency_key)
-        ).scalar_one()
+        return db.execute(select(Job).where(Job.idempotency_key == idempotency_key)).scalar_one()
     log_event(log, "JOB_ENQUEUED", job_id=job.id, type=job_type, run_at=job.run_at.isoformat())
     return job
 
@@ -116,7 +114,9 @@ def fail_job(db: Session, job: Job, error: str) -> None:
     if job.attempts >= job.max_attempts:
         job.status = JobStatus.DEAD
         job.finished_at = utcnow()
-        log_event(log, "JOB_DEAD", level=logging.ERROR, job_id=job.id, type=job.type, error=error[:200])
+        log_event(
+            log, "JOB_DEAD", level=logging.ERROR, job_id=job.id, type=job.type, error=error[:200]
+        )
     else:
         delay = min(BACKOFF_BASE_SECONDS * (2 ** (job.attempts - 1)), BACKOFF_MAX_SECONDS)
         job.status = JobStatus.QUEUED

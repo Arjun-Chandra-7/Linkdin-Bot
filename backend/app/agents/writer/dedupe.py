@@ -78,7 +78,9 @@ def find_duplicate(
     return best
 
 
-def hook_recently_used(db: Session, hook: str, *, lookback: int = 10, threshold: float = 0.8) -> bool:
+def hook_recently_used(
+    db: Session, hook: str, *, lookback: int = 10, threshold: float = 0.8
+) -> bool:
     """Guard against reusing the same opening line shape."""
     if not hook:
         return False

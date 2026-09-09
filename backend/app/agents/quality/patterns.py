@@ -10,22 +10,47 @@ import re
 
 # Hype words that almost always signal generic LinkedIn filler.
 CLICHE_PHRASES: tuple[str, ...] = (
-    "game changer", "game-changer", "revolutionary", "mind-blowing", "mind blowing",
-    "10x", "game changing", "paradigm shift", "the future is here", "let that sink in",
-    "needle-moving", "supercharge", "unlock the power", "harness the power",
-    "in today's fast-paced world", "in today's world", "at the end of the day",
-    "the possibilities are endless", "this changes everything", "buckle up",
-    "here's the thing", "spoiler alert", "plot twist", "hot take",
-    "leveraging synergies", "thought leader", "rockstar", "ninja",
-    "crushing it", "the secret sauce", "low-hanging fruit",
+    "game changer",
+    "game-changer",
+    "revolutionary",
+    "mind-blowing",
+    "mind blowing",
+    "10x",
+    "game changing",
+    "paradigm shift",
+    "the future is here",
+    "let that sink in",
+    "needle-moving",
+    "supercharge",
+    "unlock the power",
+    "harness the power",
+    "in today's fast-paced world",
+    "in today's world",
+    "at the end of the day",
+    "the possibilities are endless",
+    "this changes everything",
+    "buckle up",
+    "here's the thing",
+    "spoiler alert",
+    "plot twist",
+    "hot take",
+    "leveraging synergies",
+    "thought leader",
+    "rockstar",
+    "ninja",
+    "crushing it",
+    "the secret sauce",
+    "low-hanging fruit",
 )
 
 # Structural tics of AI-written LinkedIn posts.
 SLOP_PATTERNS: tuple[tuple[str, str], ...] = (
     (r"\b(ai|it)\s+is\s*n[o']t\s+coming\b", "'X isn't coming' suspense opener"),
     (r"here are \d+\s+\w+", "'Here are N things' listicle opener"),
-    (r"\b\d+\s+(things|ways|lessons|reasons|tips|secrets)\b.{0,30}\b(you|that)\b",
-     "numbered listicle framing"),
+    (
+        r"\b\d+\s+(things|ways|lessons|reasons|tips|secrets)\b.{0,30}\b(you|that)\b",
+        "numbered listicle framing",
+    ),
     (r"\byou (must|need to) know\b", "'you must know' urgency"),
     (r"\bmost people (don'?t|do not)\b", "'most people don't' superiority hook"),
     (r"\bread that again\b", "'read that again' engagement tic"),
@@ -52,7 +77,9 @@ ENGAGEMENT_BAIT: tuple[tuple[str, str], ...] = (
 
 # Evidence that the author actually did something.
 FIRST_PERSON = re.compile(r"\b(i|i'?m|i'?ve|my|we|we'?ve|our)\b", re.I)
-CONCRETE_NUMBER = re.compile(r"\b\d+(\.\d+)?\s*(ms|s|m|h|%|x|kb|mb|gb|k|lines?|tests?|times?)\b", re.I)
+CONCRETE_NUMBER = re.compile(
+    r"\b\d+(\.\d+)?\s*(ms|s|m|h|%|x|kb|mb|gb|k|lines?|tests?|times?)\b", re.I
+)
 ANY_NUMBER = re.compile(r"\b\d+(\.\d+)?\b")
 
 # Technical vocabulary, used as a depth signal rather than a whitelist.
@@ -68,7 +95,7 @@ TECHNICAL_TERMS = re.compile(
 )
 
 EMOJI = re.compile(
-    "[" "\U0001f300-\U0001faff" "\U00002600-\U000027bf" "\U0001f1e6-\U0001f1ff" "]",
+    "[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f1e6-\U0001f1ff]",
     flags=re.UNICODE,
 )
 
@@ -76,8 +103,18 @@ HASHTAG = re.compile(r"(?:^|\s)#\w+")
 
 # Generic hashtags that add nothing.
 GENERIC_HASHTAGS = {
-    "#ai", "#tech", "#innovation", "#motivation", "#success", "#leadership",
-    "#growth", "#business", "#future", "#technology", "#inspiration", "#hustle",
+    "#ai",
+    "#tech",
+    "#innovation",
+    "#motivation",
+    "#success",
+    "#leadership",
+    "#growth",
+    "#business",
+    "#future",
+    "#technology",
+    "#inspiration",
+    "#hustle",
 }
 
 
@@ -89,9 +126,11 @@ IDENTIFIER = re.compile(r"\b\w+_\w+\b|\b[a-z]+[A-Z]\w+\b|`[^`]+`")
 PROPER_NOUN = re.compile(r"(?<![.!?]\s)(?<!^)\b[A-Z][a-z]{2,}\b", re.M)
 SPELLED_NUMBER = re.compile(
     r"\b(one|two|three|four|five|six|seven|eight|nine|ten|dozen|twice|"
-    r"half|hundred|thousand)\b\s+\w+", re.I
+    r"half|hundred|thousand)\b\s+\w+",
+    re.I,
 )
 DURATION = re.compile(
     r"\b(second|minute|hour|day|week|month|morning|night|monday|tuesday|wednesday|"
-    r"thursday|friday|saturday|sunday)s?\b", re.I
+    r"thursday|friday|saturday|sunday)s?\b",
+    re.I,
 )

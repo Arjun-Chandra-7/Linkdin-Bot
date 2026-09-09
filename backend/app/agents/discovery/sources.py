@@ -42,7 +42,7 @@ _COMMIT_PREFIX = re.compile(
 
 
 def strip_commit_prefix(subject: str) -> str:
-    """"feat: add X" -> "add X". The prefix is noise in a post topic."""
+    """ "feat: add X" -> "add X". The prefix is noise in a post topic."""
     cleaned = _COMMIT_PREFIX.sub("", subject).strip()
     return cleaned or subject
 
@@ -69,7 +69,9 @@ def _parse_date(entry) -> datetime | None:
     return None
 
 
-def fetch_rss(url: str, *, source_name: str, category: ContentCategory, limit: int = 15) -> list[RawItem]:
+def fetch_rss(
+    url: str, *, source_name: str, category: ContentCategory, limit: int = 15
+) -> list[RawItem]:
     """Read a public RSS/Atom feed."""
     import feedparser
 

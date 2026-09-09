@@ -149,10 +149,7 @@ def normalize_mix(mix: dict[str, float] | None) -> dict[str, float]:
     # multiplier pushes every build log past the 1.0 ceiling, so they all tie
     # and the ranking inside the category - the part that decides what gets
     # written - is lost. The mix should tilt the ordering, not flatten it.
-    return {
-        key: 1.0 + ((float(value) / mean) - 1.0) * 0.3
-        for key, value in mix.items()
-    }
+    return {key: 1.0 + ((float(value) / mean) - 1.0) * 0.3 for key, value in mix.items()}
 
 
 def ingest_items(
@@ -168,9 +165,7 @@ def ingest_items(
 
     for item in items:
         digest = fingerprint(item.title, item.url)
-        existing = db.execute(
-            select(Idea).where(Idea.fingerprint == digest)
-        ).scalar_one_or_none()
+        existing = db.execute(select(Idea).where(Idea.fingerprint == digest)).scalar_one_or_none()
         if existing is not None:
             continue
 

@@ -195,6 +195,7 @@ class ScheduledPostOut(ORMModel):
 
 class CalendarEntry(BaseModel):
     draft_id: int
+    slot_id: int | None = None
     title: str
     post_type: PostType
     status: DraftStatus
