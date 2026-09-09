@@ -103,6 +103,16 @@ adb install -r mobile/app/build/outputs/apk/debug/app-debug.apk
 adb shell am start -n com.linkedincopilot.app/.MainActivity
 ```
 
-Point the app at `http://10.0.2.2:8000` — that is the host machine as seen from
-inside the emulator. The app's network config already allows cleartext to that
-address.
+Point the app at `http://10.0.2.2:8000` (or `http://10.0.2.2:8055` if running on port 8055) — that is the host machine as seen from inside the emulator. The app's network config already allows cleartext to that address.
+
+To test offline behavior in the emulator:
+```bash
+# Sever connection
+adb shell "svc wifi disable && svc data disable"
+
+# Perform approvals or edits in the app, test process death with:
+adb shell am force-stop com.linkedincopilot.app
+
+# Reconnect and watch pending actions sync
+adb shell "svc wifi enable && svc data enable"
+```

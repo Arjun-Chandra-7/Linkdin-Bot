@@ -9,7 +9,6 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-
 from app.analytics.engine import compute_insights, engagement_of, predict_performance
 from app.approvals.service import add_version
 from app.database.base import utcnow

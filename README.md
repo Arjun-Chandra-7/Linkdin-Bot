@@ -271,15 +271,15 @@ Settings, or add your own note to draft from.
 | Quality gate / AI-slop detector | **Tested** against real slop / real writing / bland filler |
 | Discovery → research → draft pipeline | **Tested** on live feeds and a real GitHub repo |
 | Android app | **Tested on a device** — installed and driven on Android 14 |
-| Offline approval queue | Implemented; the idempotency and stale-hash paths are tested server-side |
+| Offline approval queue | **Tested on a device** — cached draft inspection, offline approve/edit/reject, process-death persistence, and conflict refusal on reconnect |
 | Learning engine | **Tested**; says nothing until it has ≥4 posts with metrics |
 | Manual publishing | **Tested** end to end, including the reminder and confirmation |
 | LinkedIn API publishing | Implemented, **not configured** — needs your token, and has not been exercised against the live API |
 | Push notifications | **Not implemented as push.** The app polls and raises local notifications; there is no cloud service |
 
-Verified on an Android 14 emulator against a live backend: paired over the
-network, loaded the approval queue, opened a draft (three variants, quality 71),
-and approved it — the server recorded the approval bound to the displayed
-content hash and scheduled the post into the next configured slot.
+Verified on an Android 14 emulator against a live backend:
+- Paired over the network (`http://10.0.2.2:8055`), loaded the approval queue, opened a draft, and approved it into the scheduler.
+- Verified the complete offline flow: severed device connectivity (`svc wifi/data disable`), inspected cached drafts, performed offline approvals, edits, and rejections.
+- Confirmed actions persist across app process death (`am force-stop`), sync automatically upon network restoration with exact-once semantics, and correctly drop with HTTP 409 if the draft content changed on the server while offline.
 
 See `docs/` for details.
