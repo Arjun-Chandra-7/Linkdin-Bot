@@ -189,6 +189,19 @@ def generate_drafts(db: Session, idea: Idea) -> WriteOutcome:
         )
         return WriteOutcome(draft=draft, accepted=False, reason="quality_gate", quality=best_report)
 
+    # Attach a relative performance estimate from this account's own history.
+    # It reports UNKNOWN until there is enough published data to mean anything.
+    from app.analytics.engine import predict_performance
+    from app.content.text import classify_hook
+
+    draft.predicted_performance = predict_performance(
+        db,
+        post_type=str(post_type),
+        hook_type=classify_hook(best_text),
+        char_count=best_version.char_count,
+        category=str(idea.category),
+    )
+
     draft.status = DraftStatus.READY_FOR_REVIEW
     idea.status = IdeaStatus.DRAFTED
     db.flush()

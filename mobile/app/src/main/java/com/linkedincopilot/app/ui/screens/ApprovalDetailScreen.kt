@@ -240,6 +240,37 @@ fun ApprovalDetailScreen(
                         }
                     }
 
+                    // A relative estimate from this account's own history, shown
+                    // only when there is enough data. Never framed as reach.
+                    current.predictedPerformance?.let { prediction ->
+                        val expected = prediction["expected"]
+                            ?.let { runCatching { it.jsonPrimitive.content }.getOrNull() }
+                        if (expected != null && expected != "UNKNOWN") {
+                            SectionHeader("Expected performance")
+                            Text(expected, style = MaterialTheme.typography.titleMedium)
+                            val confidence = prediction["confidence"]
+                                ?.let { runCatching { it.jsonPrimitive.content }.getOrNull() }
+                            if (confidence != null) {
+                                Text(
+                                    "Confidence: ${confidence.lowercase().replace('_', ' ')}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            prediction["reasons"]
+                                ?.let { runCatching { it.jsonArray }.getOrNull() }
+                                ?.mapNotNull { runCatching { it.jsonPrimitive.content }.getOrNull() }
+                                ?.forEach { reason ->
+                                    Text(
+                                        reason,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 2.dp),
+                                    )
+                                }
+                        }
+                    }
+
                     current.uncertaintyNotes?.let { note ->
                         SectionHeader("Not verified")
                         Text(

@@ -95,6 +95,8 @@ data class DraftDetail(
     val sources: List<ResearchReference> = emptyList(),
     @SerialName("research_summary") val researchSummary: String? = null,
     @SerialName("uncertainty_notes") val uncertaintyNotes: String? = null,
+    @SerialName("predicted_performance")
+    val predictedPerformance: Map<String, kotlinx.serialization.json.JsonElement>? = null,
     @SerialName("has_valid_approval") val hasValidApproval: Boolean = false,
     @SerialName("rejection_reason") val rejectionReason: String? = null,
     @SerialName("failure_reason") val failureReason: String? = null,
