@@ -31,14 +31,16 @@ htmlcov/
 .tox/
 
 # ---- Local data ----
+# Anchored to the repo root: an unanchored "data/" also matches source
+# packages named data/ (the Android app has one) and silently drops them.
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
 *.sqlite
 *.sqlite3
-data/
-logs/
+/data/
+/logs/
 *.log
 
 # ---- Android / Gradle ----
