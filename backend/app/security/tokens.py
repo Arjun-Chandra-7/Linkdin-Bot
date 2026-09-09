@@ -17,7 +17,7 @@ import secrets
 import uuid
 
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, VerificationError
+from argon2.exceptions import VerificationError, VerifyMismatchError
 
 _ph = PasswordHasher()
 

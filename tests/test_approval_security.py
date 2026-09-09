@@ -7,7 +7,6 @@ publishing something the user did not agree to.
 from __future__ import annotations
 
 import pytest
-
 from app.approvals.service import (
     add_version,
     assert_publishable,

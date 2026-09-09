@@ -76,7 +76,7 @@ def score_item(
     words = len(text.split())
 
     personal_hits = len(_PERSONAL_MARKERS.findall(text))
-    technical_hits = len(set(m.lower() for m in _TECHNICAL_MARKERS.findall(text)))
+    technical_hits = len({m.lower() for m in _TECHNICAL_MARKERS.findall(text)})
 
     personal_experience = min(1.0, personal_hits / 6.0)
     # Anything sourced from the user's own repo *is* personal experience.

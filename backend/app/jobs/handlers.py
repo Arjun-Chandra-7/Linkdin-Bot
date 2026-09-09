@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.approvals.service import assert_publishable
@@ -25,8 +26,6 @@ from app.database.enums import (
     PublishMethod,
     ScheduleStatus,
 )
-from sqlalchemy import select
-
 from app.database.models import (
     AnalyticsSnapshot,
     Draft,
@@ -188,10 +187,10 @@ def record_publication(
     draft.status = DraftStatus.PUBLISHED
     db.flush()
 
-    from app.jobs.queue import enqueue
-
     # First metrics sweep once the post has had time to gather any.
     from datetime import timedelta
+
+    from app.jobs.queue import enqueue
 
     enqueue(
         db,

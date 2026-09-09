@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.database.base import utcnow
 from app.database.models import Device, PairingCode
 from app.security.tokens import (
@@ -15,6 +13,7 @@ from app.security.tokens import (
     parse_token,
     verify_token_secret,
 )
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture()

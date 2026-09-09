@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from app.agents.quality.detector import APPROVE, REJECT, analyze, passes_gate
 
 SLOP = """AI isn't coming.

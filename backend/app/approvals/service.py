@@ -157,7 +157,9 @@ def invalidate_approvals(db: Session, draft: Draft, reason: str) -> int:
 
 def _phrase_diff(before: str, after: str) -> tuple[list[str], list[str]]:
     """Sentence-level diff: what the user deleted vs. what they wrote instead."""
-    split = lambda t: [s.strip() for s in canonicalize(t).replace("\n", " ").split(". ") if s.strip()]
+    def split(text: str) -> list[str]:
+        return [s.strip() for s in canonicalize(text).replace("\n", " ").split(". ") if s.strip()]
+
     a, b = split(before), split(after)
     matcher = difflib.SequenceMatcher(None, a, b)
     removed: list[str] = []

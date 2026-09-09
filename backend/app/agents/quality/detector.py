@@ -17,11 +17,11 @@ from app.agents.quality.patterns import (
     ANY_NUMBER,
     CLICHE_PHRASES,
     CONCRETE_NUMBER,
+    DURATION,
     EMOJI,
     ENGAGEMENT_BAIT,
     FIRST_PERSON,
     GENERIC_HASHTAGS,
-    DURATION,
     HASHTAG,
     IDENTIFIER,
     PROPER_NOUN,
@@ -98,7 +98,7 @@ def analyze(text: str, *, claim_confidence: float = 0.8) -> QualityReport:
     first_person_hits = len(FIRST_PERSON.findall(body))
     concrete_numbers = len(CONCRETE_NUMBER.findall(body))
     any_numbers = len(ANY_NUMBER.findall(body))
-    technical_hits = len(set(m.lower() for m in TECHNICAL_TERMS.findall(body)))
+    technical_hits = len({m.lower() for m in TECHNICAL_TERMS.findall(body)})
 
     # Structural specificity: named things the author is actually working with.
     acronyms = {a for a in ACRONYM.findall(body) if a not in {"I", "A"}}

@@ -4,15 +4,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
 from app.approvals.service import submit_decision
 from app.core.settings_store import set_setting
 from app.database.enums import ApprovalAction, DraftStatus, JobStatus, ScheduleStatus
 from app.database.models import Job, PublishedPost, ScheduledPost
 from app.jobs.handlers import publish_post
 from app.jobs.queue import claim_due_jobs, enqueue, fail_job, recover_orphaned_jobs
-from app.scheduler.service import candidate_slots, next_available_slot, schedule_approved_draft
+from app.scheduler.service import candidate_slots, schedule_approved_draft
 
 
 def _approve_and_schedule(db, draft):

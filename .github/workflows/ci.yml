@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements-dev.txt
+
+      - name: Lint
+        run: ruff check backend scripts tests
+
+      - name: Tests
+        # The default LLM provider is the offline mock, so tests need no API key.
+        run: pytest -q
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for committed secrets
+        run: |
+          # Fail on anything that looks like a real key or a tracked .env.
+          if git ls-files | grep -E '(^|/)\.env$|\.pem$|\.jks$|\.keystore$'; then
+            echo "::error::A secret-bearing file is tracked in git"
+            exit 1
+          fi
+          if git grep -nIE '(sk-ant-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,})' \
+               -- ':!*.md' ':!.github/workflows/*'; then
+            echo "::error::A credential appears to be committed"
+            exit 1
+          fi
+          echo "No tracked secrets found."
+
+  android:
+    name: Android build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          # The Android Gradle Plugin supports JDK 17/21, not newer.
+          distribution: temurin
+          java-version: "21"
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Build debug APK
+        working-directory: mobile
+        run: ./gradlew :app:assembleDebug --no-daemon --no-build-cache
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: mobile/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

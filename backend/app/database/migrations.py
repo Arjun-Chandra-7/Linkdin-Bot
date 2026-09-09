@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from sqlalchemy import Connection, text
 
 from app.core.logging import log_event
-from app.database.base import Base
 from app.database import models  # noqa: F401  (import registers all tables)
+from app.database.base import Base
 
 log = logging.getLogger(__name__)
 

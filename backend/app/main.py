@@ -23,11 +23,14 @@ API_PREFIX = "/api/v1"
 
 def _check_secret(settings) -> None:
     """Refuse to run a LAN-exposed server with the shipped default secret."""
-    if settings.secret_key.startswith("dev-only") and settings.is_production:
-        if not settings.allow_insecure_secret:
-            raise RuntimeError(
-                "SECRET_KEY is still the default. Generate one before running in production."
-            )
+    if (
+        settings.secret_key.startswith("dev-only")
+        and settings.is_production
+        and not settings.allow_insecure_secret
+    ):
+        raise RuntimeError(
+            "SECRET_KEY is still the default. Generate one before running in production."
+        )
 
 
 @asynccontextmanager
@@ -124,8 +127,10 @@ def create_app() -> FastAPI:
         network,
         notifications,
         schedule,
-        settings as settings_router,
         system,
+    )
+    from app.api.v1 import (
+        settings as settings_router,
     )
 
     for module in (

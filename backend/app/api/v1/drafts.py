@@ -113,11 +113,14 @@ def save_edit(
     """
     draft = _get_draft(db, draft_id)
     current = draft.current_version
-    if current is not None and payload.expected_content_hash:
-        if payload.expected_content_hash != current.content_hash:
-            raise ContentChangedError(
-                details={"expected": payload.expected_content_hash, "actual": current.content_hash}
-            )
+    if (
+        current is not None
+        and payload.expected_content_hash
+        and payload.expected_content_hash != current.content_hash
+    ):
+        raise ContentChangedError(
+            details={"expected": payload.expected_content_hash, "actual": current.content_hash}
+        )
     if current is not None and content_hash(payload.content) == current.content_hash:
         return DraftVersionOut.model_validate(current)
 

@@ -76,7 +76,7 @@ def check_draft(db: Session, content: str, research: Research | None) -> dict:
         return report
 
     prompt = (
-        f"EVIDENCE:\n" + "\n".join(evidence_lines)
+        "EVIDENCE:\n" + "\n".join(evidence_lines)
         + (f"\n\nKNOWN UNCERTAINTY: {research.uncertainty_notes}" if research.uncertainty_notes else "")
         + f"\n\nDRAFT POST:\n{content}\n\nFlag only statements the evidence does not support."
     )
