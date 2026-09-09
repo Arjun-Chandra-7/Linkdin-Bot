@@ -267,12 +267,19 @@ Settings, or add your own note to draft from.
 
 | Component | State |
 |---|---|
-| Backend, approval integrity, scheduler, jobs | Implemented and tested |
-| Quality gate / AI-slop detector | Implemented and tested against real examples |
-| Android app | Implemented; APK builds |
-| Offline approval queue | Implemented and tested |
-| Learning engine | Implemented; needs published history to say anything |
-| LinkedIn API publishing | Implemented, **not configured** — needs your token |
-| Manual publishing | Implemented and tested end to end |
+| Backend, approval integrity, scheduler, jobs | **Tested** — 69 tests, plus a full HTTP acceptance run |
+| Quality gate / AI-slop detector | **Tested** against real slop / real writing / bland filler |
+| Discovery → research → draft pipeline | **Tested** on live feeds and a real GitHub repo |
+| Android app | **Tested on a device** — installed and driven on Android 14 |
+| Offline approval queue | Implemented; the idempotency and stale-hash paths are tested server-side |
+| Learning engine | **Tested**; says nothing until it has ≥4 posts with metrics |
+| Manual publishing | **Tested** end to end, including the reminder and confirmation |
+| LinkedIn API publishing | Implemented, **not configured** — needs your token, and has not been exercised against the live API |
+| Push notifications | **Not implemented as push.** The app polls and raises local notifications; there is no cloud service |
+
+Verified on an Android 14 emulator against a live backend: paired over the
+network, loaded the approval queue, opened a draft (three variants, quality 71),
+and approved it — the server recorded the approval bound to the displayed
+content hash and scheduled the post into the next configured slot.
 
 See `docs/` for details.
