@@ -137,6 +137,15 @@ cp .env.example .env          # defaults are safe: offline mock LLM, manual publ
 The backend listens on `0.0.0.0:8000` so your phone can reach it. API docs at
 `http://localhost:8000/docs`.
 
+Then seed some sources and start the daily loop:
+
+```bash
+python scripts/seed.py --github your-name/your-repo
+```
+
+Your own repository matters most: commits and releases are a factual record of
+what you actually built, which is what the account is supposed to be about.
+
 It runs with **no API key**: the default LLM provider is a deterministic
 offline mock that produces real, topic-specific drafts, so you can exercise the
 whole pipeline before spending anything.
@@ -190,7 +199,25 @@ sources.
 
 The backend runs a discovery pass on a schedule: it checks your sources, scores
 candidates for free, researches only the strongest, drafts only the best of
-those, and pushes what survives the quality gate to your phone. You open the
+those, and pushes what survives the quality gate to your phone.
+
+A real run against live feeds and a GitHub repo, with the offline mock writer:
+
+```
+49 ideas ingested from sources
+   ↓  scored in pure Python, no model calls
+ 6 rejected as too weak (free)
+   ↓
+ 5 researched      ← only these cost anything
+   ↓
+ 5 drafted
+   ↓  quality gate
+ 3 rejected (scored 66-68, below the threshold)
+   ↓
+ 2 reached the approval queue (74 and 84)
+```
+
+More ideas than drafts, more drafts than recommendations. That is the point. You open the
 app, read, edit if you want, and approve. Everything else is automatic.
 
 You can also just type an idea yourself — Approvals → add a note — which is the
