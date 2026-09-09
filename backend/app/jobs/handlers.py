@@ -87,8 +87,14 @@ def publish_post(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
 
     slot.status = ScheduleStatus.PUBLISHING
     slot.attempts += 1
-    assert_transition(DraftStatus(draft.status), DraftStatus.PUBLISHING)
-    draft.status = DraftStatus.PUBLISHING
+    # A redelivered job for a post already awaiting manual publication (or a
+    # retry after a crash mid-publish) finds the draft in PUBLISHING already.
+    # Re-asserting the transition would raise; the real double-publish guard
+    # is the PUBLISHED check above plus the unique constraint on
+    # published_posts.draft_id.
+    if DraftStatus(draft.status) is not DraftStatus.PUBLISHING:
+        assert_transition(DraftStatus(draft.status), DraftStatus.PUBLISHING)
+        draft.status = DraftStatus.PUBLISHING
     db.flush()
 
     publisher = get_publisher(get_settings())

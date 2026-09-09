@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -47,6 +47,7 @@ import com.linkedincopilot.app.ui.components.StatusPill
 import com.linkedincopilot.app.ui.components.postTypeLabel
 import com.linkedincopilot.app.ui.components.statusColor
 import com.linkedincopilot.app.ui.components.statusLabel
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 
 private val REJECTION_REASONS = listOf(
@@ -108,7 +109,7 @@ fun ApprovalDetailScreen(
                 title = { Text(if (editing) "Edit post" else "Review post") },
                 navigationIcon = {
                     IconButton(onClick = { if (editing) editing = false else onBack() }) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
             )
@@ -198,25 +199,22 @@ fun ApprovalDetailScreen(
                     // ---- Quality, honestly reported ----
                     if (quality != null) {
                         SectionHeader("Quality check")
-                        val q = { key: String ->
-                            runCatching { quality[key]?.jsonPrimitive?.content }.getOrNull()
-                        }
-                        KeyValueRow("Quality score", q("quality") ?: "—")
-                        KeyValueRow("AI-slop probability", q("ai_slop_probability") ?: "—")
-                        KeyValueRow("Originality", q("originality") ?: "—")
-                        val issues = runCatching {
-                            quality["issues"]?.let { element ->
-                                kotlinx.serialization.json.Json.decodeFromJsonElement(
-                                    kotlinx.serialization.builtins.ListSerializer(
-                                        kotlinx.serialization.builtins.serializer<String>()
-                                    ),
-                                    element,
-                                )
+                        fun field(key: String): String? =
+                            quality[key]?.let { element ->
+                                runCatching { element.jsonPrimitive.content }.getOrNull()
                             }
-                        }.getOrNull().orEmpty()
-                        issues.forEach {
+                        KeyValueRow("Quality score", field("quality") ?: "—")
+                        KeyValueRow("AI-slop probability", field("ai_slop_probability") ?: "—")
+                        KeyValueRow("Originality", field("originality") ?: "—")
+
+                        // Issues are the actionable part: say what is wrong with it.
+                        val issues = quality["issues"]
+                            ?.let { runCatching { it.jsonArray }.getOrNull() }
+                            ?.mapNotNull { runCatching { it.jsonPrimitive.content }.getOrNull() }
+                            .orEmpty()
+                        issues.forEach { issue ->
                             Text(
-                                "• $it",
+                                "\u2022 $issue",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(top = 2.dp),
