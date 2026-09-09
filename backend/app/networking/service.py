@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import re
 from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
@@ -135,3 +136,46 @@ def notify_new_candidates(db: Session, candidates: list[ConnectionCandidate]) ->
 def recommendation_limit(db: Session) -> int:
     """Small by design - quality over quantity, and no mass activity."""
     return int(get_setting(db, "network_recommendations_per_run"))
+
+
+# --------------------------------------------------------------------------
+# Candidate discovery
+# --------------------------------------------------------------------------
+
+# Author bylines and mentions in the feeds the user already follows. This is
+# the only automated discovery path, and it deliberately reads *public feed
+# content the user has chosen to follow* - it never searches or scrapes
+# LinkedIn, and it produces a handful of names, not a list.
+_LINKEDIN_PROFILE = re.compile(r"https?://(?:[\w-]+\.)?linkedin\.com/in/[\w%-]+/?")
+
+
+def extract_candidates_from_text(
+    text: str, *, context: str = "", limit: int = 5
+) -> list[CandidateInput]:
+    """Find LinkedIn profile links that appear in content the user follows.
+
+    Returns the raw candidates; scoring and note-drafting happen in
+    ``add_candidate``, and the user still sends every invitation by hand.
+    """
+    found: list[CandidateInput] = []
+    seen: set[str] = set()
+    for match in _LINKEDIN_PROFILE.finditer(text or ""):
+        url = match.group(0).rstrip("/")
+        if url.lower() in seen:
+            continue
+        seen.add(url.lower())
+        slug = url.rsplit("/", 1)[-1].replace("-", " ").strip()
+        # Trailing id fragments in profile slugs are noise, not a surname.
+        name = " ".join(
+            part.capitalize() for part in slug.split() if not part.isdigit() and len(part) > 1
+        )
+        found.append(
+            CandidateInput(
+                name=name or slug,
+                profile_url=url,
+                context=context[:1500],
+            )
+        )
+        if len(found) >= limit:
+            break
+    return found

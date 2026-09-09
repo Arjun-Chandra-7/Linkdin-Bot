@@ -389,22 +389,50 @@ def discover_connections(db: Session, payload: dict[str, Any]) -> dict[str, Any]
     This never searches or scrapes LinkedIn. Candidates are supplied through
     the API by the user, and the user sends every invitation by hand.
     """
-    from app.networking.service import CandidateInput, add_candidate, notify_new_candidates
+    from app.core.settings_store import get_setting
+    from app.networking.service import (
+        CandidateInput,
+        add_candidate,
+        extract_candidates_from_text,
+        notify_new_candidates,
+    )
 
     raw = payload.get("candidates") or []
-    created = []
-    for entry in raw[: int(payload.get("limit", 10))]:
-        record = add_candidate(
-            db,
-            CandidateInput(
-                name=entry.get("name", "").strip(),
-                profile_url=entry.get("profile_url", "").strip(),
-                role=entry.get("role"),
-                company=entry.get("company"),
-                context=entry.get("context", ""),
-                shared_interests=entry.get("shared_interests"),
-            ),
+    candidates = [
+        CandidateInput(
+            name=entry.get("name", "").strip(),
+            profile_url=entry.get("profile_url", "").strip(),
+            role=entry.get("role"),
+            company=entry.get("company"),
+            context=entry.get("context", ""),
+            shared_interests=entry.get("shared_interests"),
         )
+        for entry in raw
+    ]
+
+    # Also pick up profile links appearing in ideas gathered from the user's
+    # own sources. Small on purpose - quality over quantity, no mass activity.
+    if payload.get("scan_sources", True):
+        from app.database.models import Idea
+
+        recent = db.execute(
+            select(Idea).order_by(Idea.id.desc()).limit(40)
+        ).scalars().all()
+        for idea in recent:
+            candidates.extend(
+                extract_candidates_from_text(
+                    f"{idea.summary or ''} {idea.source_ref or ''}",
+                    context=f"Mentioned in: {idea.topic}",
+                    limit=2,
+                )
+            )
+
+    limit = int(payload.get("limit") or get_setting(db, "network_recommendations_per_run"))
+    created = []
+    for candidate in candidates[:limit]:
+        if not candidate.name or not candidate.profile_url:
+            continue
+        record = add_candidate(db, candidate)
         if record is not None:
             created.append(record)
 
@@ -437,3 +465,30 @@ def daily_loop(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
         idempotency_key=f"daily:{next_run.date().isoformat()}",
     )
     return {"next_run": next_run.isoformat()}
+
+
+@job_handler("network_loop")
+def network_loop(db: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    """Periodically surface a small number of relevant people, then re-arm.
+
+    Small is the point: this finds a handful of candidates from sources the
+    user already follows and asks them to decide. It never searches LinkedIn,
+    and nothing here can send an invitation.
+    """
+    from datetime import timedelta
+
+    from app.core.settings_store import get_setting
+    from app.jobs.queue import enqueue
+
+    result = discover_connections(db, {"scan_sources": True})
+
+    interval = float(get_setting(db, "network_run_interval_hours"))
+    next_run = utcnow() + timedelta(hours=interval)
+    enqueue(
+        db,
+        "network_loop",
+        {},
+        run_at=next_run,
+        idempotency_key=f"network-loop:{next_run.date().isoformat()}",
+    )
+    return {**result, "next_run": next_run.isoformat()}

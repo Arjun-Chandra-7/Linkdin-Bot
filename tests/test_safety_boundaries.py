@@ -122,3 +122,47 @@ def test_writer_prompt_forbids_engagement_bait_and_hype():
     assert "never invent" in lowered
     assert "engagement bait" in lowered
     assert "game changer" in lowered
+
+
+def test_network_discovery_reads_followed_sources_only(db):
+    """Candidates come from content the user already follows - not a search."""
+    from app.networking.service import extract_candidates_from_text
+
+    found = extract_candidates_from_text(
+        "Good writeup from https://www.linkedin.com/in/jane-doe-123/ on queues.",
+        context="Mentioned in a feed the user follows",
+    )
+    assert len(found) == 1
+    assert found[0].profile_url.endswith("/in/jane-doe-123")
+
+
+def test_network_loop_stays_small(db, monkeypatch):
+    """No mass activity: the run is capped by the configured limit."""
+    from app.core.settings_store import set_setting
+    from app.database.models import ConnectionCandidate
+    from app.jobs.handlers import discover_connections
+
+    set_setting(db, "network_recommendations_per_run", 3)
+    db.commit()
+
+    payload = {
+        "scan_sources": False,
+        "candidates": [
+            {"name": f"Person {i}", "profile_url": f"https://linkedin.com/in/person-{i}"}
+            for i in range(25)
+        ],
+    }
+    discover_connections(db, payload)
+    db.commit()
+
+    assert db.query(ConnectionCandidate).count() == 3
+
+
+def test_connection_status_values_never_imply_the_system_acted(db):
+    """The terminal state is 'the user says they connected', not 'we connected'."""
+    from app.database.enums import ConnectionStatus
+
+    values = {str(v) for v in ConnectionStatus}
+    assert "MARKED_CONNECTED" in values
+    for forbidden in ("SENT", "INVITED", "REQUESTED", "CONNECTED"):
+        assert forbidden not in values, f"status implies the system acted: {forbidden}"
