@@ -13,9 +13,7 @@ Usage:  python scripts/e2e_check.py [--base http://127.0.0.1:8000]
 from __future__ import annotations
 
 import argparse
-import json
 import subprocess
-import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
