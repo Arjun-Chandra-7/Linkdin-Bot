@@ -26,7 +26,8 @@ ALLOWED: dict[S, frozenset[S]] = {
     # review rather than letting stale consent stand.
     S.APPROVED: frozenset({S.SCHEDULED, S.READY_FOR_REVIEW, S.REJECTED, S.CANCELLED}),
     S.SCHEDULED: frozenset({S.PUBLISHING, S.READY_FOR_REVIEW, S.CANCELLED, S.FAILED}),
-    S.PUBLISHING: frozenset({S.PUBLISHED, S.FAILED}),
+    # Manual mode parks here while the user posts; they can also abandon it.
+    S.PUBLISHING: frozenset({S.PUBLISHED, S.FAILED, S.CANCELLED}),
     S.PUBLISHED: frozenset(),
     S.REJECTED: frozenset(),
     S.CANCELLED: frozenset(),

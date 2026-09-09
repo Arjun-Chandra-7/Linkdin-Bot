@@ -50,9 +50,26 @@ def _m0002_indexes(conn: Connection) -> None:
         conn.execute(text(stmt))
 
 
+def _m0003_notification_deliver_after(conn: Connection) -> None:
+    """Hold low-priority notifications until quiet hours end."""
+    if not _column_exists(conn, "notifications", "deliver_after"):
+        conn.execute(text("ALTER TABLE notifications ADD COLUMN deliver_after DATETIME"))
+    conn.execute(
+        text(
+            "CREATE INDEX IF NOT EXISTS ix_notifications_deliver_after "
+            "ON notifications (deliver_after)"
+        )
+    )
+
+
 MIGRATIONS: list[Migration] = [
     Migration("0001_initial", "Create initial schema", _m0001_initial),
     Migration("0002_indexes", "Add query-supporting indexes", _m0002_indexes),
+    Migration(
+        "0003_notification_deliver_after",
+        "Add deferred-delivery column for quiet hours",
+        _m0003_notification_deliver_after,
+    ),
 ]
 
 

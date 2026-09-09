@@ -108,6 +108,7 @@ def generate_drafts(db: Session, idea: Idea) -> WriteOutcome:
             topic=idea.topic,
             post_type=post_type,
             why_it_matters=idea.why_it_matters,
+            source_notes=idea.summary,
             research_summary=research.summary if research else None,
             evidence=evidence,
             uncertainty=research.uncertainty_notes if research else None,

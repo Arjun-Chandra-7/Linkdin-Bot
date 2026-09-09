@@ -209,6 +209,14 @@ def analyze(text: str, *, claim_confidence: float = 0.8) -> QualityReport:
     quality *= 1.0 - (ai_slop_probability * 0.45)
     quality *= 1.0 - (bait_probability * 0.25)
     quality *= 0.75 + 0.25 * max(0.0, min(claim_confidence, 1.0))
+    # The weighted sum compresses at the top: measured against real examples,
+    # genuinely excellent human-written posts landed at 61-70, which makes a
+    # 0-100 "quality" number misleading in the UI and any sensible threshold
+    # impossible to set. Stretch the upper band so scores are interpretable -
+    # good work reads as ~80 - while leaving the low end untouched so slop and
+    # filler keep scoring where they did.
+    if quality > 45:
+        quality = 45 + (quality - 45) * 1.6
     quality_score = int(round(_clamp(quality)))
 
     if ai_slop_probability >= 0.6 or quality_score < 45 or bait_probability >= 0.6:

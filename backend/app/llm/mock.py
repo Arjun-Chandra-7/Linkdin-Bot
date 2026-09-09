@@ -21,7 +21,12 @@ from app.llm.base import LLMProvider, LLMResponse, ProviderStatus
 T = TypeVar("T", bound=BaseModel)
 
 _TOPIC_RE = re.compile(r"TOPIC:\s*(.+)", re.I)
-_NOTES_RE = re.compile(r"(?:NOTES|EVIDENCE|RESEARCH):\s*(.+?)(?:\n[A-Z_]+:|\Z)", re.I | re.S)
+# Section labels carry qualifiers ("NOTES FROM THE AUTHOR (first-hand):"), so
+# match up to the colon rather than requiring a bare keyword.
+_NOTES_RE = re.compile(
+    r"(?:NOTES|EVIDENCE|RESEARCH)[^:\n]*:\s*(.+?)(?=\n[A-Z][A-Z ]{2,}[^:\n]*:|\Z)",
+    re.I | re.S,
+)
 
 
 def _seed_for(text: str) -> int:
@@ -40,11 +45,12 @@ def _extract_notes(prompt: str) -> list[str]:
     match = _NOTES_RE.search(prompt)
     if not match:
         return []
-    return [
-        line.strip(" -*\t")
-        for line in match.group(1).splitlines()
-        if len(line.strip(" -*\t")) > 12
-    ][:4]
+    raw = match.group(1)
+    lines = [line.strip(" -*\t") for line in raw.splitlines() if len(line.strip(" -*\t")) > 12]
+    if len(lines) == 1:
+        # Prose notes: split into sentences so they read as distinct points.
+        lines = [s.strip() for s in re.split(r"(?<=[.!?])\s+", lines[0]) if len(s.strip()) > 12]
+    return lines[:4]
 
 
 def _build_post(prompt: str, rng: random.Random) -> str:

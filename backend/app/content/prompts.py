@@ -86,6 +86,7 @@ def build_writer_prompt(
     topic: str,
     post_type: PostType,
     why_it_matters: str | None = None,
+    source_notes: str | None = None,
     research_summary: str | None = None,
     evidence: list[str] | None = None,
     uncertainty: str | None = None,
@@ -99,6 +100,10 @@ def build_writer_prompt(
     parts.append(FORMAT_GUIDANCE.get(post_type, ""))
     parts.append(VARIANT_GUIDANCE.get(variant, VARIANT_GUIDANCE["A"]))
 
+    # The author's own notes are the most valuable input there is - they are
+    # first-hand and specific - so they go in whether or not research ran.
+    if source_notes:
+        parts.append(f"NOTES FROM THE AUTHOR (first-hand, use these specifics):\n{source_notes}")
     if research_summary:
         parts.append(f"RESEARCH: {research_summary}")
     if evidence:

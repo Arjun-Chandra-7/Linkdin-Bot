@@ -17,7 +17,6 @@ from typing import Any
 from sqlalchemy import (
     JSON,
     Boolean,
-    DateTime,
     Float,
     ForeignKey,
     Index,
@@ -28,7 +27,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.database.base import Base, TimestampMixin
+from app.database.base import Base, TimestampMixin, UTCDateTime
 from app.database.enums import (
     ApprovalAction,
     ConnectionStatus,
@@ -60,10 +59,10 @@ class Device(Base, TimestampMixin):
     platform: Mapped[str] = mapped_column(String(32), default="android")
     token_hash: Mapped[str] = mapped_column(String(255))
     scopes: Mapped[list[str]] = mapped_column(JSON, default=list)
-    paired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    paired_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     revoked: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     push_token: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 
@@ -74,8 +73,8 @@ class PairingCode(Base, TimestampMixin):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     code_hash: Mapped[str] = mapped_column(String(255), index=True)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
-    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
+    used_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     consumed_by_device: Mapped[str | None] = mapped_column(String(64), nullable=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
 
@@ -95,7 +94,7 @@ class Source(Base, TimestampMixin):
     category: Mapped[ContentCategory] = mapped_column(String(40), default=ContentCategory.AI_OBSERVATION)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     weight: Mapped[float] = mapped_column(Float, default=1.0)
-    last_fetched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_fetched_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
     config: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
@@ -127,7 +126,7 @@ class Idea(Base, TimestampMixin):
     reject_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
     # Stable hash of the normalised topic, used to avoid re-ingesting the same item.
     fingerprint: Mapped[str] = mapped_column(String(64), index=True)
-    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     extra: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
 
     source: Mapped[Source | None] = relationship(back_populates="ideas")
@@ -172,7 +171,7 @@ class Draft(Base, TimestampMixin):
         ForeignKey("draft_versions.id", use_alter=True, name="fk_draft_current_version"), nullable=True
     )
     generation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
-    proposed_publish_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    proposed_publish_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     rejection_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
     rejection_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -235,10 +234,10 @@ class Approval(Base, TimestampMixin):
     version_id: Mapped[int] = mapped_column(ForeignKey("draft_versions.id"), index=True)
     action: Mapped[ApprovalAction] = mapped_column(String(24), index=True)
     approved_content_hash: Mapped[str] = mapped_column(String(64), index=True)
-    approval_timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    approval_timestamp: Mapped[datetime] = mapped_column(UTCDateTime)
     device_id: Mapped[str] = mapped_column(String(64), index=True)
     valid: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
-    invalidated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    invalidated_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     invalidated_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
     was_edited: Mapped[bool] = mapped_column(Boolean, default=False)
     rejection_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -266,7 +265,7 @@ class ScheduledPost(Base, TimestampMixin):
     draft_id: Mapped[int] = mapped_column(ForeignKey("drafts.id", ondelete="CASCADE"), index=True)
     version_id: Mapped[int] = mapped_column(ForeignKey("draft_versions.id"))
     approval_id: Mapped[int] = mapped_column(ForeignKey("approvals.id"))
-    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    scheduled_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Kolkata")
     status: Mapped[ScheduleStatus] = mapped_column(String(24), default=ScheduleStatus.PENDING, index=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
@@ -284,7 +283,7 @@ class PublishedPost(Base, TimestampMixin):
     approval_id: Mapped[int] = mapped_column(ForeignKey("approvals.id"))
     content: Mapped[str] = mapped_column(Text)
     content_hash: Mapped[str] = mapped_column(String(64), index=True)
-    published_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    published_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
     method: Mapped[PublishMethod] = mapped_column(String(16))
     external_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     external_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
@@ -312,7 +311,7 @@ class AnalyticsSnapshot(Base, TimestampMixin):
     published_post_id: Mapped[int] = mapped_column(
         ForeignKey("published_posts.id", ondelete="CASCADE"), index=True
     )
-    collected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    collected_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
     source: Mapped[str] = mapped_column(String(24), default="manual")  # manual | api
     impressions: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reactions: Mapped[int | None] = mapped_column(Integer, nullable=True)
@@ -383,8 +382,12 @@ class Notification(Base, TimestampMixin):
     body: Mapped[str] = mapped_column(Text)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     device_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    # Low-priority items are held until quiet hours end, then batched.
+    deliver_after: Mapped[datetime | None] = mapped_column(
+        UTCDateTime, nullable=True, index=True
+    )
     dedupe_key: Mapped[str | None] = mapped_column(String(160), unique=True, nullable=True)
 
 
@@ -397,14 +400,14 @@ class Job(Base, TimestampMixin):
     type: Mapped[str] = mapped_column(String(60), index=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     status: Mapped[JobStatus] = mapped_column(String(24), default=JobStatus.QUEUED, index=True)
-    run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    run_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
     attempts: Mapped[int] = mapped_column(Integer, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, default=5)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     locked_by: Mapped[str | None] = mapped_column(String(80), nullable=True)
-    locked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    locked_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
     result: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(160), unique=True, nullable=True)
 
@@ -447,4 +450,4 @@ class LearningInsight(Base, TimestampMixin):
     observed: Mapped[float | None] = mapped_column(Float, nullable=True)
     lift: Mapped[float | None] = mapped_column(Float, nullable=True)
     confidence: Mapped[str] = mapped_column(String(32), index=True)
-    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    generated_at: Mapped[datetime] = mapped_column(UTCDateTime, index=True)
