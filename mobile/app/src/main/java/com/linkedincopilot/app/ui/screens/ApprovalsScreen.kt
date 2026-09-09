@@ -26,6 +26,8 @@ import com.linkedincopilot.app.ui.components.postTypeLabel
 import com.linkedincopilot.app.ui.components.statusColor
 import com.linkedincopilot.app.ui.components.statusLabel
 
+import com.linkedincopilot.app.data.local.PendingAction
+
 @Composable
 fun ApprovalsScreen(state: AppState, onOpen: (Int) -> Unit) {
     if (state.drafts.isEmpty() && !state.loading) {
@@ -49,14 +51,15 @@ fun ApprovalsScreen(state: AppState, onOpen: (Int) -> Unit) {
             )
         }
         items(state.drafts, key = { it.id }) { draft ->
-            DraftCard(draft) { onOpen(draft.id) }
+            val pending = state.pendingActionMap[draft.id]
+            DraftCard(draft, pending) { onOpen(draft.id) }
         }
         item { Column(Modifier.padding(bottom = 24.dp)) {} }
     }
 }
 
 @Composable
-private fun DraftCard(draft: DraftSummary, onClick: () -> Unit) {
+private fun DraftCard(draft: DraftSummary, pending: PendingAction?, onClick: () -> Unit) {
     Card(
         Modifier.fillMaxWidth().clickable(onClick = onClick),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -67,7 +70,16 @@ private fun DraftCard(draft: DraftSummary, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 StatusPill(postTypeLabel(draft.postType), MaterialTheme.colorScheme.secondary)
-                StatusPill(statusLabel(draft.status), statusColor(draft.status))
+                if (pending != null) {
+                    when (pending.action) {
+                        "APPROVE" -> StatusPill("Queued for sync", MaterialTheme.colorScheme.tertiary)
+                        "REJECT" -> StatusPill("Rejection queued", MaterialTheme.colorScheme.error)
+                        "SAVE_FOR_LATER" -> StatusPill("Save queued", MaterialTheme.colorScheme.secondary)
+                        else -> StatusPill("Action queued", MaterialTheme.colorScheme.outline)
+                    }
+                } else {
+                    StatusPill(statusLabel(draft.status), statusColor(draft.status))
+                }
             }
 
             Text(

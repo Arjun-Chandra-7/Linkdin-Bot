@@ -88,6 +88,7 @@ fun ApprovalDetailScreen(
     onBack: () -> Unit,
 ) {
     var detail by remember { mutableStateOf<DraftDetail?>(null) }
+    var originalContent by remember { mutableStateOf<String?>(null) }
     var editing by remember { mutableStateOf(false) }
     var editedText by remember { mutableStateOf("") }
     var showReject by remember { mutableStateOf(false) }
@@ -95,9 +96,16 @@ fun ApprovalDetailScreen(
     var rejectNote by remember { mutableStateOf("") }
     var loadError by remember { mutableStateOf<String?>(null) }
 
+    val pending = state.pendingActionMap[draftId]
+
     suspend fun load() {
         runCatching { vm.draftDetail(draftId) }
-            .onSuccess { detail = it; editedText = it.currentVersion?.content.orEmpty(); loadError = null }
+            .onSuccess {
+                detail = it
+                editedText = it.currentVersion?.content.orEmpty()
+                originalContent = it.currentVersion?.content
+                loadError = null
+            }
             .onFailure { loadError = it.message }
     }
 
@@ -136,7 +144,62 @@ fun ApprovalDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         StatusPill(postTypeLabel(current.postType), MaterialTheme.colorScheme.secondary)
-                        StatusPill(statusLabel(current.status), statusColor(current.status))
+                        if (pending != null) {
+                            when (pending.action) {
+                                "APPROVE" -> StatusPill("Queued for sync", MaterialTheme.colorScheme.tertiary)
+                                "REJECT" -> StatusPill("Rejection queued", MaterialTheme.colorScheme.error)
+                                "SAVE_FOR_LATER" -> StatusPill("Save queued", MaterialTheme.colorScheme.secondary)
+                                else -> StatusPill("Action queued", MaterialTheme.colorScheme.outline)
+                            }
+                        } else {
+                            StatusPill(statusLabel(current.status), statusColor(current.status))
+                        }
+                        if (version?.id == -1) {
+                            StatusPill("Offline copy", MaterialTheme.colorScheme.error)
+                        }
+                    }
+
+                    if (pending != null) {
+                        Card(
+                            Modifier.fillMaxWidth().padding(top = 12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                            ),
+                        ) {
+                            Column(Modifier.padding(14.dp)) {
+                                Text(
+                                    when (pending.action) {
+                                        "APPROVE" -> "Approval is queued locally. It will sync automatically when your laptop is reachable."
+                                        "REJECT" -> "Rejection is queued locally. It will sync automatically when your laptop is reachable."
+                                        else -> "Decision is queued locally."
+                                    },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                )
+                                TextButton(
+                                    onClick = { vm.cancelPending(draftId) },
+                                    modifier = Modifier.padding(top = 4.dp),
+                                ) {
+                                    Text("Cancel queued decision", color = MaterialTheme.colorScheme.onTertiaryContainer)
+                                }
+                            }
+                        }
+                    } else if (version?.id == -1) {
+                        Card(
+                            Modifier.fillMaxWidth().padding(top = 12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            ),
+                        ) {
+                            Text(
+                                "The backend is not reachable, so this is the copy saved on your "
+                                    + "phone. You can still approve or reject it - the decision is "
+                                    + "queued and sent once your laptop is back.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(14.dp),
+                            )
+                        }
                     }
 
                     // ---- The post itself ----
@@ -281,7 +344,7 @@ fun ApprovalDetailScreen(
                     }
 
                     // ---- Rewrite tools ----
-                    if (!editing) {
+                    if (!editing && version?.id != -1) {
                         SectionHeader("Rewrite")
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             REWRITES.forEach { (op, label) ->
@@ -338,56 +401,84 @@ fun ApprovalDetailScreen(
 
                     // ---- Primary actions ----
                     if (!showReject) {
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = 24.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            Button(
-                                onClick = {
-                                    val hash = version?.contentHash ?: return@Button
-                                    val edited = editedText.takeIf {
-                                        editing && it != version.content
-                                    }
-                                    vm.approve(draftId, hash, edited) { onBack() }
-                                },
-                                enabled = !state.loading && version != null,
-                                modifier = Modifier.weight(1f),
-                            ) { Text(if (editing) "Approve edit" else "Approve") }
-
-                            OutlinedButton(
-                                onClick = {
-                                    if (editing) {
-                                        version?.let {
-                                            vm.saveEdit(draftId, editedText, it.contentHash) { updated ->
-                                                detail = updated
-                                                editedText = updated.currentVersion?.content.orEmpty()
-                                                editing = false
-                                            }
+                        if (pending != null) {
+                            Row(
+                                Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 32.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Button(
+                                    onClick = { vm.cancelPending(draftId) },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Cancel queued decision") }
+                                OutlinedButton(
+                                    onClick = onBack,
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Back to queue") }
+                            }
+                        } else {
+                            Row(
+                                Modifier.fillMaxWidth().padding(top = 24.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                Button(
+                                    onClick = {
+                                        val hash = version?.contentHash ?: return@Button
+                                        val edited = editedText.takeIf {
+                                            editing && it != (originalContent ?: version.content)
                                         }
-                                    } else {
-                                        editing = true
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            ) { Text(if (editing) "Save edit" else "Edit") }
-                        }
+                                        vm.approve(draftId, hash, edited) { onBack() }
+                                    },
+                                    enabled = !state.loading && version != null,
+                                    modifier = Modifier.weight(1f),
+                                ) { Text(if (editing) "Approve edit" else "Approve") }
 
-                        Row(
-                            Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 32.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            TextButton(
-                                onClick = { showReject = true },
-                                modifier = Modifier.weight(1f),
-                            ) { Text("Reject") }
-                            TextButton(
-                                onClick = {
-                                    version?.let {
-                                        vm.saveForLater(draftId, it.contentHash) { onBack() }
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                            ) { Text("Save for later") }
+                                OutlinedButton(
+                                    onClick = {
+                                        if (editing) {
+                                            version?.let {
+                                                if (version.id == -1) {
+                                                    detail = detail?.copy(
+                                                        currentVersion = version.copy(
+                                                            content = editedText,
+                                                            charCount = editedText.length,
+                                                        )
+                                                    )
+                                                    vm.saveEditOffline(draftId, editedText)
+                                                    editing = false
+                                                } else {
+                                                    vm.saveEdit(draftId, editedText, it.contentHash) { updated ->
+                                                        detail = updated
+                                                        editedText = updated.currentVersion?.content.orEmpty()
+                                                        originalContent = updated.currentVersion?.content
+                                                        editing = false
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            editing = true
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text(if (editing) "Save edit" else "Edit") }
+                            }
+
+                            Row(
+                                Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 32.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                TextButton(
+                                    onClick = { showReject = true },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Reject") }
+                                TextButton(
+                                    onClick = {
+                                        version?.let {
+                                            vm.saveForLater(draftId, it.contentHash) { onBack() }
+                                        }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                ) { Text("Save for later") }
+                            }
                         }
                     }
                 }

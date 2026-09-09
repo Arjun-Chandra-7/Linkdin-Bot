@@ -17,6 +17,7 @@ import com.linkedincopilot.app.data.Repository
 import com.linkedincopilot.app.data.RewriteOperation
 import com.linkedincopilot.app.data.SecureStore
 import com.linkedincopilot.app.data.SystemStatus
+import com.linkedincopilot.app.data.local.PendingAction
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +36,7 @@ data class AppState(
     val analytics: AnalyticsOverview? = null,
     val status: SystemStatus? = null,
     val pendingSync: Int = 0,
+    val pendingActionMap: Map<Int, PendingAction> = emptyMap(),
     val error: UiError? = null,
     val message: String? = null,
 )
@@ -53,7 +55,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            repo.pendingCount.collect { count -> _state.value = _state.value.copy(pendingSync = count) }
+            repo.pendingActions.collect { actions ->
+                _state.value = _state.value.copy(
+                    pendingSync = actions.size,
+                    pendingActionMap = actions.associateBy { it.draftId },
+                )
+            }
         }
         if (store.isPaired) refreshAll()
     }
@@ -102,11 +109,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun refreshAll() = run {
         // Send anything queued while offline before reading fresh state.
         val sync = repo.syncPending()
-        val home = repo.api.home()
-        val drafts = repo.refreshDrafts()
+        val drafts = runCatching { repo.refreshDrafts() }.getOrElse { emptyList() }
+        val home = runCatching { repo.api.home() }.getOrNull()
         _state.value = _state.value.copy(
-            home = home,
-            drafts = drafts,
+            home = home ?: _state.value.home ?: HomeSummary(
+                pendingApprovals = drafts.count { it.status == "READY_FOR_REVIEW" },
+                scheduledPosts = 0,
+                publishedThisWeek = 0,
+                suggestedConnections = 0,
+                backendStatus = "offline",
+            ),
+            drafts = if (drafts.isNotEmpty()) drafts else _state.value.drafts,
             paired = true,
             message = when {
                 sync.sent > 0 && sync.conflicted > 0 ->
@@ -182,11 +195,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshAllInternal()
     }
 
+    fun cancelPending(draftId: Int) = run {
+        repo.cancelPending(draftId)
+        _state.value = _state.value.copy(message = "Queued decision cancelled.")
+        refreshAllInternal()
+    }
+
+    fun saveEditOffline(draftId: Int, content: String) = run {
+        repo.saveEditOffline(draftId, content)
+        _state.value = _state.value.copy(message = "Edit saved to offline copy.")
+    }
+
     private suspend fun refreshAllInternal() {
         runCatching {
-            val home = repo.api.home()
             val drafts = repo.refreshDrafts()
-            _state.value = _state.value.copy(home = home, drafts = drafts)
+            val home = runCatching { repo.api.home() }.getOrNull()
+            _state.value = _state.value.copy(
+                home = home ?: _state.value.home,
+                drafts = if (drafts.isNotEmpty()) drafts else _state.value.drafts,
+            )
         }
     }
 

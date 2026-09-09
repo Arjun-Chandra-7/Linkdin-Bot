@@ -63,6 +63,9 @@ interface CopilotDao {
     @Query("SELECT * FROM cached_drafts ORDER BY updatedAt DESC")
     fun observeDrafts(): Flow<List<CachedDraft>>
 
+    @Query("SELECT * FROM cached_drafts ORDER BY updatedAt DESC")
+    suspend fun getCachedDrafts(): List<CachedDraft>
+
     @Query("SELECT * FROM cached_drafts WHERE id = :id")
     suspend fun draft(id: Int): CachedDraft?
 
