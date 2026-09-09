@@ -13,6 +13,11 @@ import uuid
 
 from app.core.logging import log_event
 from app.database.session import session_scope
+
+# Importing handlers here (rather than relying on the caller to do it) means
+# any entry point that starts a worker - the API, a script, a test - has a
+# populated registry. Without it, jobs fail with "no handler registered".
+from app.jobs import handlers as _handlers  # noqa: F401
 from app.jobs.queue import claim_due_jobs, complete_job, fail_job, recover_orphaned_jobs
 from app.jobs.registry import get_handler
 

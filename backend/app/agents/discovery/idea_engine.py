@@ -126,6 +126,35 @@ def _similarity_to_published(db: Session, text: str, limit: int = 40) -> float:
     return max((similarity(text, content) for content in published), default=0.0)
 
 
+def normalize_mix(mix: dict[str, float] | None) -> dict[str, float]:
+    """Turn the desired content mix into multipliers centred on 1.0.
+
+    ``category_mix`` expresses the *proportion* of output wanted from each
+    category (40% build logs, 20% AI observations, ...). Those fractions must
+    not be multiplied into a score directly: they are all below 1, so doing so
+    drags every idea down and, with a threshold of 0.55, rejects everything.
+
+    Dividing by the mean turns them into relative preferences instead - a
+    category you want more of scores above 1.0, one you want less of below.
+    """
+    if not mix:
+        return {}
+    values = [float(v) for v in mix.values() if float(v) > 0]
+    if not values:
+        return {}
+    mean = sum(values) / len(values)
+    if mean <= 0:
+        return {}
+    # Dampen the preference to roughly +/-30%. At full strength a 1.6x
+    # multiplier pushes every build log past the 1.0 ceiling, so they all tie
+    # and the ranking inside the category - the part that decides what gets
+    # written - is lost. The mix should tilt the ordering, not flatten it.
+    return {
+        key: 1.0 + ((float(value) / mean) - 1.0) * 0.3
+        for key, value in mix.items()
+    }
+
+
 def ingest_items(
     db: Session,
     items: list[RawItem],
@@ -134,7 +163,7 @@ def ingest_items(
     category_weights: dict[str, float] | None = None,
 ) -> list[Idea]:
     """Score candidates and store the new ones. Duplicates are skipped."""
-    weights = category_weights or {}
+    weights = normalize_mix(category_weights)
     created: list[Idea] = []
 
     for item in items:

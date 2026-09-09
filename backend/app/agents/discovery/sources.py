@@ -8,6 +8,7 @@ these are public feeds and the user's own material.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -33,6 +34,26 @@ class RawItem:
     category: ContentCategory = ContentCategory.AI_OBSERVATION
     source_name: str = ""
     extra: dict = field(default_factory=dict)
+
+
+_COMMIT_PREFIX = re.compile(
+    r"^(feat|fix|chore|docs|test|refactor|perf|ci|build|style)(\([^)]*\))?!?:\s*", re.I
+)
+
+
+def strip_commit_prefix(subject: str) -> str:
+    """"feat: add X" -> "add X". The prefix is noise in a post topic."""
+    cleaned = _COMMIT_PREFIX.sub("", subject).strip()
+    return cleaned or subject
+
+
+def _iso_to_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
 
 
 def _parse_date(entry) -> datetime | None:
@@ -116,8 +137,10 @@ def fetch_github_activity(
             )
             if commits.status_code == 200:
                 for commit in commits.json():
-                    message = (commit.get("commit", {}).get("message") or "").split("\n")
-                    subject = message[0].strip()
+                    detail = commit.get("commit", {})
+                    authored = (detail.get("author") or {}).get("date")
+                    message = (detail.get("message") or "").split("\n")
+                    subject = strip_commit_prefix(message[0].strip())
                     body = "\n".join(message[1:]).strip()
                     if not subject or subject.lower().startswith(("merge ", "bump ")):
                         continue
@@ -126,6 +149,7 @@ def fetch_github_activity(
                             title=subject[:300],
                             summary=body[:800],
                             url=commit.get("html_url"),
+                            published_at=_iso_to_datetime(authored),
                             category=ContentCategory.BUILD_LOG,
                             source_name=source_name,
                             extra={"repo": repo, "kind": "commit"},
