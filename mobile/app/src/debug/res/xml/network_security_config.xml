@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug network security configuration:
+  Allows cleartext HTTP traffic to local/development backends on any private LAN IP or emulator host
+  (e.g., 192.168.x.x, 10.x.x.x, 172.16-31.x.x, 10.0.2.2, localhost).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

@@ -1,22 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  The backend runs on the user's own laptop on their local network, which does
-  not have a TLS certificate. Cleartext is therefore permitted *only* for
-  private address ranges - never for the public internet - so a
-  misconfiguration cannot silently send an approval token over plain HTTP to a
-  remote host.
+  Release network security configuration:
+  Cleartext HTTP traffic is strictly disabled. Only HTTPS is permitted in production/release.
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />
-
-    <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="false">localhost</domain>
-        <domain includeSubdomains="false">127.0.0.1</domain>
-        <domain includeSubdomains="false">10.0.2.2</domain>
-        <!-- RFC1918 private ranges, written out because Android matches on
-             literal hosts rather than CIDR blocks. -->
-        <domain includeSubdomains="true">192.168.0.0</domain>
-        <domain includeSubdomains="true">10.0.0.0</domain>
-        <domain includeSubdomains="true">172.16.0.0</domain>
-    </domain-config>
 </network-security-config>
+

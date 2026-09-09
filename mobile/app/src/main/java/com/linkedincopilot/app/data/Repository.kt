@@ -32,8 +32,9 @@ class Repository(private val context: Context, val store: SecureStore) {
     val isPaired: Boolean get() = store.isPaired
 
     suspend fun pair(baseUrl: String, code: String, deviceName: String): PairResponse {
-        val response = api.pair(baseUrl, code, deviceName)
-        store.baseUrl = baseUrl.trimEnd('/')
+        val clean = ApiClient.normalizeBaseUrl(baseUrl)
+        val response = api.pair(clean, code, deviceName)
+        store.baseUrl = clean
         store.token = response.token
         store.deviceId = response.deviceId
         store.serverName = response.serverName

@@ -68,7 +68,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun toUiError(e: Throwable): UiError = when (e) {
         is OfflineException -> UiError(
             "Backend offline",
-            "Your laptop is not reachable. Check it is awake and on the same Wi-Fi.",
+            e.message?.takeIf { it.isNotBlank() && it != "Backend unreachable" }
+                ?: "Your laptop is not reachable. Check it is awake and on the same Wi-Fi.",
             offline = true,
         )
         is ApiException -> UiError(e.message, e.recovery)

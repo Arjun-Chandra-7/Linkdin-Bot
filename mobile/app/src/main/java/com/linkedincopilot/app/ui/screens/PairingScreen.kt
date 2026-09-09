@@ -80,7 +80,14 @@ fun PairingScreen(vm: AppViewModel, state: AppState, onPaired: () -> Unit) {
 
         OutlinedTextField(
             value = url,
-            onValueChange = { url = it.trim() },
+            onValueChange = { input ->
+                val trimmed = input.trim()
+                url = if (trimmed.startsWith("http") && trimmed.indexOf("http", 4) != -1) {
+                    trimmed.substring(trimmed.lastIndexOf("http"))
+                } else {
+                    trimmed
+                }
+            },
             label = { Text("Backend address") },
             placeholder = { Text("http://192.168.1.10:8000") },
             singleLine = true,
@@ -90,7 +97,7 @@ fun PairingScreen(vm: AppViewModel, state: AppState, onPaired: () -> Unit) {
 
         OutlinedTextField(
             value = code,
-            onValueChange = { code = it.uppercase() },
+            onValueChange = { code = it.uppercase().trim() },
             label = { Text("Pairing code") },
             placeholder = { Text("ABCD-1234") },
             singleLine = true,
@@ -132,8 +139,8 @@ fun PairingScreen(vm: AppViewModel, state: AppState, onPaired: () -> Unit) {
         }
 
         Button(
-            onClick = { vm.pair(url, code, name, onPaired) },
-            enabled = !state.loading && code.length >= 4 && url.startsWith("http"),
+            onClick = { vm.pair(url.trim(), code.trim(), name.trim(), onPaired) },
+            enabled = !state.loading && code.trim().length >= 4 && (url.trim().startsWith("http") || url.trim().contains(":")),
             modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
         ) {
             if (state.loading) {

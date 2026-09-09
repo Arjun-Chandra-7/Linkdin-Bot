@@ -54,8 +54,24 @@ class ApiClient(private val store: SecureStore) {
         defaultRequest { contentType(ContentType.Application.Json) }
     }
 
+    companion object {
+        private const val TAG = "ApiClient"
+
+        fun normalizeBaseUrl(input: String): String {
+            val trimmed = input.trim()
+            val withScheme = if (!trimmed.startsWith("http://", ignoreCase = true) &&
+                !trimmed.startsWith("https://", ignoreCase = true)
+            ) {
+                "http://$trimmed"
+            } else {
+                trimmed
+            }
+            return withScheme.trimEnd('/')
+        }
+    }
+
     private fun url(path: String): String {
-        val base = store.baseUrl?.trimEnd('/')
+        val base = store.baseUrl?.let { normalizeBaseUrl(it) }
             ?: throw ApiException("not_paired", "This device is not paired yet.", "Pair with your laptop in Settings.")
         return "$base$path"
     }
@@ -85,22 +101,37 @@ class ApiClient(private val store: SecureStore) {
         } catch (e: ApiException) {
             throw e
         } catch (e: IOException) {
-            throw OfflineException("Could not reach the backend.")
+            android.util.Log.e(TAG, "Request IO error: ${e.javaClass.name}: ${e.message}", e)
+            val msg = if (e.message?.contains("Cleartext", ignoreCase = true) == true) {
+                "Cleartext HTTP traffic blocked by network security policy."
+            } else {
+                "Could not reach the backend."
+            }
+            throw OfflineException(msg)
         } catch (e: Exception) {
             // Ktor wraps connection failures in engine-specific types.
             if (e is kotlinx.coroutines.CancellationException) throw e
+            android.util.Log.e(TAG, "Request generic error: ${e.javaClass.name}: ${e.message}", e)
             throw OfflineException("Could not reach the backend.")
         }
 
     // ---- Pairing -------------------------------------------------------
     suspend fun pair(baseUrl: String, code: String, deviceName: String): PairResponse {
-        val clean = baseUrl.trimEnd('/')
+        val clean = normalizeBaseUrl(baseUrl)
+        android.util.Log.d(TAG, "Attempting pair to $clean/api/v1/auth/pair")
         val response = try {
             client.post("$clean/api/v1/auth/pair") {
-                setBody(PairRequest(code = code, deviceName = deviceName))
+                setBody(PairRequest(code = code.trim().uppercase(), deviceName = deviceName.trim()))
             }
         } catch (e: Exception) {
-            throw OfflineException("Could not reach $clean. Check the address and that the backend is running.")
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            android.util.Log.e(TAG, "Pair request failed to $clean: ${e.javaClass.name}: ${e.message}", e)
+            val msg = if (e.message?.contains("Cleartext", ignoreCase = true) == true) {
+                "Cleartext HTTP traffic to $clean not permitted by network security policy."
+            } else {
+                "Could not reach $clean. Check the address and that the backend is running."
+            }
+            throw OfflineException(msg)
         }
         return handle(response)
     }
