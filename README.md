@@ -123,6 +123,17 @@ its own approval.
 
 ---
 
+## Three ways to use it
+
+| Surface | For |
+|---|---|
+| **Desktop console** (`http://localhost:8000/app/`) | Reviewing and editing at a desk. Full width, keyboard-driven. |
+| **Android app** | Approving from your phone, including offline. |
+| **Jarvis voice agent** | "Hey Jarvis, open LinkedIn stats" — opens the console and reads the numbers aloud. See `docs/jarvis.md`. |
+
+All three talk to the same backend and obey the same rule: nothing publishes
+without your explicit approval of the exact text.
+
 ## Setup
 
 Requirements: Python 3.11+, and (for the app) JDK 17 or 21 and the Android SDK.

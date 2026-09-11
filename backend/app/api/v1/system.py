@@ -101,7 +101,8 @@ def system_status(
     scheduler = ComponentStatus(
         name="scheduler",
         status="ok" if settings.scheduler_enabled else "disabled",
-        detail=(f"Next job at {next_job.run_at.isoformat()}" if next_job else "No jobs queued."),
+        # Shown to a person, so say it the way a person would.
+        detail=(f"Next job {_spoken_when(db, next_job.run_at)}" if next_job else "No jobs queued."),
     )
 
     return SystemStatus(
