@@ -1,0 +1,15 @@
+[Unit]
+Description=LinkedIn Content Copilot API and scheduler
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Dev/Linkdin/repo
+Environment=PORT=8001
+ExecStart=%h/Dev/Linkdin/repo/.venv/bin/python -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8001
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
