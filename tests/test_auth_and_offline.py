@@ -40,6 +40,20 @@ def test_garbage_token_is_rejected(client):
     assert response.status_code == 401
 
 
+def test_desktop_sessions_share_token_across_local_processes(client, monkeypatch):
+    from app.api.v1 import auth
+
+    monkeypatch.setattr(auth, "LOOPBACK_HOSTS", auth.LOOPBACK_HOSTS | {"testclient"})
+    first = client.post("/api/v1/auth/desktop-session")
+    second = client.post("/api/v1/auth/desktop-session")
+
+    assert first.status_code == second.status_code == 200
+    assert first.json()["token"] == second.json()["token"]
+    assert client.get(
+        "/api/v1/auth/me", headers={"Authorization": f"Bearer {first.json()['token']}"}
+    ).status_code == 200
+
+
 def test_token_for_unknown_device_is_rejected(client):
     token, _ = generate_device_token(new_device_id())
     response = client.get("/api/v1/drafts", headers={"Authorization": f"Bearer {token}"})

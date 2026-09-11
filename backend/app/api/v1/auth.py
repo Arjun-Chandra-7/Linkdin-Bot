@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import time
 from collections import deque
+from threading import Lock
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
@@ -148,6 +149,8 @@ def revoke_self(
 
 LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 DESKTOP_DEVICE_NAME = "This computer"
+_DESKTOP_SESSION_LOCK = Lock()
+_desktop_session: tuple[str, str] | None = None
 
 
 @router.post("/desktop-session", response_model=PairResponse)
@@ -179,37 +182,44 @@ def desktop_session(request: Request, db: Session = Depends(get_db)) -> PairResp
             },
         )
 
-    now = utcnow()
-    existing = db.execute(
-        select(Device).where(
-            Device.name == DESKTOP_DEVICE_NAME,
-            Device.platform == "desktop",
-            Device.revoked.is_(False),
-        )
-    ).scalars().first()
-
-    # Rotate the secret on every request: the token is only ever held in the
-    # memory of the local process that asked for it.
-    device_id = existing.id if existing is not None else new_device_id()
-    token, token_hash = generate_device_token(device_id)
-
-    if existing is None:
-        db.add(
-            Device(
-                id=device_id,
-                name=DESKTOP_DEVICE_NAME,
-                platform="desktop",
-                token_hash=token_hash,
-                scopes=DEFAULT_SCOPES,
-                paired_at=now,
-                last_seen_at=now,
+    global _desktop_session
+    with _DESKTOP_SESSION_LOCK:
+        now = utcnow()
+        existing = db.execute(
+            select(Device).where(
+                Device.name == DESKTOP_DEVICE_NAME,
+                Device.platform == "desktop",
+                Device.revoked.is_(False),
             )
-        )
-    else:
-        existing.token_hash = token_hash
-        existing.last_seen_at = now
+        ).scalars().first()
 
-    db.commit()
+        # Web and voice are separate local processes. Reusing one in-memory
+        # token prevents either process from invalidating the other's session.
+        device_id = existing.id if existing is not None else new_device_id()
+        if _desktop_session is not None and _desktop_session[0] == device_id:
+            token = _desktop_session[1]
+        else:
+            token, token_hash = generate_device_token(device_id)
+            _desktop_session = (device_id, token)
+
+            if existing is None:
+                db.add(
+                    Device(
+                        id=device_id,
+                        name=DESKTOP_DEVICE_NAME,
+                        platform="desktop",
+                        token_hash=token_hash,
+                        scopes=DEFAULT_SCOPES,
+                        paired_at=now,
+                        last_seen_at=now,
+                    )
+                )
+            else:
+                existing.token_hash = token_hash
+        if existing is not None:
+            existing.last_seen_at = now
+
+        db.commit()
     log_event(log, "DESKTOP_SESSION_ISSUED", device_id=device_id)
     return PairResponse(
         device_id=device_id,
