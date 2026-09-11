@@ -14,6 +14,14 @@ from sqlalchemy.orm import Session
 from app.database.models import Setting
 
 DEFAULTS: dict[str, Any] = {
+    # --- Identity ---
+    # The account this copilot writes for. Used for profile guidance, for the
+    # "open my profile" shortcut, and to avoid ever recommending the user to
+    # themselves in the networking queue.
+    "linkedin_profile_url": "",
+    "linkedin_display_name": "",
+    "linkedin_headline": "",
+
     # --- Scheduling ---
     "timezone": "Asia/Kolkata",
     # Local wall-clock slots. Nothing is hard-coded to specific days elsewhere.
