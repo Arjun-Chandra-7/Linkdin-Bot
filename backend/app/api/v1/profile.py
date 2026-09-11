@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.settings_store import get_setting
 from app.database.models import Device, PublishedPost
 from app.database.session import get_db
 from app.security.auth import get_current_device
@@ -74,22 +75,27 @@ def profile_guidance(
     posts = db.execute(select(PublishedPost)).scalars().all()
     theme = _theme(posts)
     cadence = _cadence(posts)
+    display_name = str(get_setting(db, "linkedin_display_name") or "").strip()
+    current_headline = str(get_setting(db, "linkedin_headline") or "").strip()
 
     formats = Counter(str(p.post_type) for p in posts)
     build_logs = formats.get("BUILD_LOG", 0)
 
     if theme:
         headline = (
-            f"Software engineer · building in public around {theme} · "
+            f"{current_headline or 'Software engineer'} · building in public around {theme} · "
             f"writing up what actually breaks"
         )
+    elif current_headline:
+        headline = current_headline
     else:
         headline = (
             "Software engineer · building in public · writing up what I build and what breaks"
         )
 
     about_lines = [
-        "I build things and write down what actually happened - including the parts that "
+        (f"I am {display_name}. " if display_name else "")
+        + "I build things and write down what actually happened - including the parts that "
         "did not work.",
     ]
     if theme:
@@ -108,6 +114,11 @@ def profile_guidance(
         recommendations.append(
             "Publish a few posts before rewriting your profile - the guidance here gets "
             "sharper once there is something to read."
+        )
+    elif len(posts) < MIN_POSTS_FOR_THEME:
+        recommendations.append(
+            f"{len(posts)} published post{' is' if len(posts) == 1 else 's are'} too little "
+            "history to infer a reliable profile theme."
         )
     if theme is None and posts:
         recommendations.append(
