@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LinkedIn Copilot</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230a1017'/><path d='M9 21 L14 26 L24 13' stroke='%236fd39a' stroke-width='3.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <h1>LinkedIn Copilot</h1>
+        <div class="sub" id="brand-sub">connecting…</div>
+      </div>
+
+      <nav class="nav" id="nav"></nav>
+
+      <div class="sidebar-foot">
+        <div class="status-line">
+          <span class="dot" id="conn-dot"></span>
+          <span id="conn-text">Checking backend…</span>
+        </div>
+        <div class="status-line tiny faint" style="margin-top:6px">
+          <span id="provider-text"></span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <h2 id="page-title">Dashboard</h2>
+        <div class="spacer"></div>
+        <span id="busy" style="display:none"><span class="spinner"></span></span>
+        <button class="btn ghost sm" id="btn-speak" title="Read the summary aloud">Read aloud</button>
+        <button class="btn sm" id="btn-refresh">Refresh</button>
+      </div>
+      <div class="content" id="view"></div>
+    </main>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+  <div id="modal-root"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

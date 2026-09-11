@@ -40,6 +40,20 @@ router = APIRouter(prefix="/system", tags=["system"])
 REVIEW_STATUSES = [DraftStatus.READY_FOR_REVIEW, DraftStatus.SAVED_FOR_LATER]
 
 
+def _spoken_when(db: Session, when) -> str:
+    from app.scheduler.service import get_timezone
+
+    local = when.astimezone(get_timezone(db))
+    today = utcnow().astimezone(get_timezone(db)).date()
+    delta = (local.date() - today).days
+    clock = local.strftime("%-I:%M %p").lower()
+    if delta == 0:
+        return f"today at {clock}"
+    if delta == 1:
+        return f"tomorrow at {clock}"
+    return f"{local.strftime('%a %-d %b')} at {clock}"
+
+
 def _count(db: Session, model, *conditions) -> int:
     stmt = select(func.count()).select_from(model)
     if conditions:

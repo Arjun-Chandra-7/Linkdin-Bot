@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.config import get_settings
 from app.core.errors import DomainError
@@ -114,6 +116,16 @@ def create_app() -> FastAPI:
             },
         )
 
+    console_dir = Path(__file__).resolve().parents[2] / "desktop"
+    if console_dir.is_dir():
+        # The console is plain static files; it gets its token from the
+        # loopback-only desktop-session endpoint once loaded.
+        app.mount("/app", StaticFiles(directory=str(console_dir), html=True), name="console")
+
+    @app.get("/", include_in_schema=False)
+    def root():
+        return RedirectResponse("/app/")
+
     @app.get("/health", tags=["system"])
     def health() -> dict[str, str]:
         """Unauthenticated liveness probe. Deliberately reveals nothing."""
@@ -123,9 +135,11 @@ def create_app() -> FastAPI:
         analytics,
         approvals,
         auth,
+        briefing,
         drafts,
         network,
         notifications,
+        profile,
         schedule,
         system,
     )
@@ -135,12 +149,14 @@ def create_app() -> FastAPI:
 
     for module in (
         auth,
+        briefing,
         drafts,
         approvals,
         schedule,
         network,
         analytics,
         notifications,
+        profile,
         settings_router,
         system,
     ):

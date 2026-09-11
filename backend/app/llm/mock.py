@@ -21,6 +21,9 @@ from app.llm.base import LLMProvider, LLMResponse, ProviderStatus
 T = TypeVar("T", bound=BaseModel)
 
 _TOPIC_RE = re.compile(r"TOPIC:\s*(.+)", re.I)
+_PERSON_RE = re.compile(r"PERSON:\s*(.+)", re.I)
+_ROLE_RE = re.compile(r"ROLE:\s*(.+)", re.I)
+_CONTEXT_RE = re.compile(r"CONTEXT[^:\n]*:\s*(.+?)(?=\n[A-Z][A-Z ]{2,}[^:\n]*:|\Z)", re.I | re.S)
 # Section labels carry qualifiers ("NOTES FROM THE AUTHOR (first-hand):"), so
 # match up to the colon rather than requiring a bare keyword.
 _NOTES_RE = re.compile(
@@ -51,6 +54,45 @@ def _extract_notes(prompt: str) -> list[str]:
         # Prose notes: split into sentences so they read as distinct points.
         lines = [s.strip() for s in re.split(r"(?<=[.!?])\s+", lines[0]) if len(s.strip()) > 12]
     return lines[:4]
+
+
+def _connection_fields(prompt: str) -> dict[str, str] | None:
+    """Reason + note for a person, built from the context in the prompt.
+
+    Without this the generic field filler produces a sentence about "the
+    author", which is nonsense on a screen about somebody else.
+    """
+    person = _PERSON_RE.search(prompt)
+    if not person:
+        return None
+    name = person.group(1).strip()
+    first_name = name.split()[0] if name else "there"
+    role = (_ROLE_RE.search(prompt).group(1).strip() if _ROLE_RE.search(prompt) else "")
+    context_match = _CONTEXT_RE.search(prompt)
+    context = " ".join((context_match.group(1) if context_match else "").split())
+
+    # First sentence of the context is the specific thing worth referencing.
+    detail = re.split(r"(?<=[.!?])\s+", context)[0].strip() if context else ""
+    detail = detail.rstrip(".")
+
+    if detail and len(detail) > 15:
+        reason = detail[0].upper() + detail[1:] + "."
+        lowered = detail[0].lower() + detail[1:]
+        note = (
+            f"Hi {first_name} - came across your work: {lowered}. "
+            f"I'm building in the same area and would be glad to connect."
+        )
+    else:
+        reason = (
+            f"{role} working in an area that overlaps with yours."
+            if role and role.lower() != "unknown"
+            else "Works in an adjacent area."
+        )
+        note = (
+            f"Hi {first_name} - we seem to be working on similar problems. "
+            f"Would be good to connect."
+        )
+    return {"reason": reason, "note": note[:280]}
 
 
 def _build_post(prompt: str, rng: random.Random) -> str:
@@ -207,10 +249,13 @@ class MockProvider(LLMProvider):
         rng = random.Random(_seed_for(prompt + task + schema.__name__))
         instance = _fill_model(schema, rng)
 
-        # Give the fields that drive real decisions topic-aware values.
+        # Give the fields that drive real decisions context-aware values.
         topic = _extract_topic(prompt)
+        person_fields = _connection_fields(prompt)
         for field_name in schema.model_fields:
-            if field_name in {"topic", "title"}:
+            if person_fields and field_name in person_fields:
+                setattr(instance, field_name, person_fields[field_name])
+            elif field_name in {"topic", "title"}:
                 setattr(instance, field_name, topic[:200])
             elif field_name == "content":
                 setattr(instance, field_name, _build_post(prompt, rng))
