@@ -9,6 +9,7 @@ Your password is never seen, typed here, or stored.
 
 What it writes to .env:
     LINKEDIN_ACCESS_TOKEN   the member token (valid ~60 days)
+    LINKEDIN_TOKEN_ISSUED_AT when the token was issued, for expiry warnings
     LINKEDIN_AUTHOR_URN     your person URN, needed to attribute posts
     LINKEDIN_PUBLISH_MODE   set to "api" once a token exists
 
@@ -35,6 +36,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import webbrowser
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -240,6 +242,7 @@ def main() -> int:
             "LINKEDIN_CLIENT_ID": client_id,
             "LINKEDIN_CLIENT_SECRET": client_secret,
             "LINKEDIN_ACCESS_TOKEN": access_token,
+            "LINKEDIN_TOKEN_ISSUED_AT": datetime.now(UTC).isoformat(),
             "LINKEDIN_AUTHOR_URN": author_urn,
             "LINKEDIN_PUBLISH_MODE": "api",
         }

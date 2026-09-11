@@ -6,7 +6,7 @@ Everything here reports real state. Where a component is not set up it says
 
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -31,13 +31,15 @@ from app.database.models import (
     ScheduledPost,
 )
 from app.database.session import get_db
-from app.linkedin.publisher import get_publisher
+from app.linkedin.publisher import PublisherStatus, get_publisher
 from app.llm.factory import get_provider
 from app.security.auth import get_current_device
 
 router = APIRouter(prefix="/system", tags=["system"])
 
 REVIEW_STATUSES = [DraftStatus.READY_FOR_REVIEW, DraftStatus.SAVED_FOR_LATER]
+LINKEDIN_TOKEN_LIFETIME = timedelta(days=60)
+LINKEDIN_TOKEN_WARNING = timedelta(days=7)
 
 
 def _spoken_when(db: Session, when) -> str:
@@ -61,6 +63,37 @@ def _count(db: Session, model, *conditions) -> int:
     return int(db.execute(stmt).scalar_one())
 
 
+def _linkedin_status(publisher_status: PublisherStatus, token_issued_at: str) -> ComponentStatus:
+    status = ComponentStatus(
+        name="linkedin", status=publisher_status.status, detail=publisher_status.detail
+    )
+    if publisher_status.status != "ok" or not token_issued_at:
+        return status
+
+    try:
+        issued_at = datetime.fromisoformat(token_issued_at.replace("Z", "+00:00"))
+        if issued_at.tzinfo is None:
+            issued_at = issued_at.replace(tzinfo=UTC)
+    except ValueError:
+        return ComponentStatus(
+            name="linkedin",
+            status="degraded",
+            detail="LinkedIn token issue date is invalid. Reconnect LinkedIn to refresh it.",
+        )
+
+    expires_at = issued_at.astimezone(UTC) + LINKEDIN_TOKEN_LIFETIME
+    if expires_at - utcnow() <= LINKEDIN_TOKEN_WARNING:
+        return ComponentStatus(
+            name="linkedin",
+            status="degraded",
+            detail=(
+                f"LinkedIn access token expires around {expires_at.date().isoformat()}. "
+                "Reconnect LinkedIn now to avoid interrupted publishing."
+            ),
+        )
+    return status
+
+
 @router.get("/status", response_model=SystemStatus)
 def system_status(
     db: Session = Depends(get_db), _: Device = Depends(get_current_device)
@@ -81,9 +114,7 @@ def system_status(
     )
 
     publisher_status = get_publisher(settings).health_check()
-    linkedin = ComponentStatus(
-        name="linkedin", status=publisher_status.status, detail=publisher_status.detail
-    )
+    linkedin = _linkedin_status(publisher_status, settings.linkedin_token_issued_at)
 
     next_job = (
         db.execute(select(Job).where(Job.status == JobStatus.QUEUED).order_by(Job.run_at).limit(1))
