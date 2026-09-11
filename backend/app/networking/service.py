@@ -63,12 +63,22 @@ that says why you are reaching out, rather than inventing detail."""
 
 
 def fingerprint(profile_url: str, name: str) -> str:
-    basis = profile_url.split("?")[0].rstrip("/").lower() or name.lower()
+    basis = normalise_profile_url(profile_url) or name.lower()
     return hashlib.sha256(basis.encode()).hexdigest()
+
+
+def normalise_profile_url(profile_url: str) -> str:
+    return profile_url.split("?", 1)[0].rstrip("/").lower()
 
 
 def add_candidate(db: Session, candidate: CandidateInput) -> ConnectionCandidate | None:
     """Score a person and draft a note. Returns None if already known."""
+    own_profile_url = get_setting(db, "linkedin_profile_url") or ""
+    if own_profile_url and normalise_profile_url(candidate.profile_url) == normalise_profile_url(
+        own_profile_url
+    ):
+        return None
+
     digest = fingerprint(candidate.profile_url, candidate.name)
     existing = db.execute(
         select(ConnectionCandidate).where(ConnectionCandidate.fingerprint == digest)

@@ -165,6 +165,26 @@ def test_network_discovery_reads_followed_sources_only(db):
     assert found[0].profile_url.endswith("/in/jane-doe-123")
 
 
+def test_networking_queue_excludes_own_profile(db):
+    from app.core.settings_store import set_setting
+    from app.database.models import ConnectionCandidate
+    from app.networking.service import CandidateInput, add_candidate
+
+    set_setting(db, "linkedin_profile_url", "https://www.linkedin.com/in/arjun-chandra-0b0b5826a/")
+    db.flush()
+
+    candidate = add_candidate(
+        db,
+        CandidateInput(
+            name="Arjun Chandra",
+            profile_url="HTTPS://WWW.LINKEDIN.COM/IN/ARJUN-CHANDRA-0B0B5826A?trk=public_profile",
+        ),
+    )
+
+    assert candidate is None
+    assert db.query(ConnectionCandidate).count() == 0
+
+
 def test_network_loop_stays_small(db, monkeypatch):
     """No mass activity: the run is capped by the configured limit."""
     from app.core.settings_store import set_setting
