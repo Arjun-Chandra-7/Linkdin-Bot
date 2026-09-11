@@ -77,8 +77,19 @@ def top_ideas(
     enqueue(db, "discover_topics", {}, idempotency_key=key)
     db.commit()
 
+    selected = _suggestions(db, limit)
+    for idea in selected:
+        if idea.status == IdeaStatus.SCORED:
+            enqueue(
+                db,
+                "research_topic",
+                {"idea_id": idea.id},
+                idempotency_key=f"research:{idea.id}",
+            )
+    db.commit()
+
     rows: list[IdeaSuggestion] = []
-    for rank, idea in enumerate(_suggestions(db, limit), 1):
+    for rank, idea in enumerate(selected, 1):
         source = db.get(Source, idea.source_id) if idea.source_id else None
         rows.append(
             IdeaSuggestion(
