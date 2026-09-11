@@ -291,6 +291,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         onDone()
     }
 
+    fun cancelSchedule(slotId: Int) = run {
+        repo.api.cancelSchedule(slotId)
+        _state.value = _state.value.copy(message = "Scheduled post cancelled.")
+        refreshAllInternal()
+    }
+
     // ---- Schedule / network / analytics --------------------------------
     fun confirmPublished(slotId: Int) = run {
         repo.api.confirmPublished(slotId)

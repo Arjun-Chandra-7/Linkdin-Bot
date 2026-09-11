@@ -188,6 +188,8 @@ def cancel(
     _: Device = Depends(get_current_device),
 ) -> ScheduledPostOut:
     slot = _get_slot(db, slot_id)
+    if slot.status not in {ScheduleStatus.PENDING, ScheduleStatus.FAILED}:
+        raise ConflictError("Only a pending or failed post can be deleted.")
     cancel_schedule(db, slot, "Cancelled from the app")
     draft = db.get(Draft, slot.draft_id)
     if draft is not None and draft.status in {DraftStatus.SCHEDULED, DraftStatus.PUBLISHING}:

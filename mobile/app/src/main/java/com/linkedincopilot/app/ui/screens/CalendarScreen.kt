@@ -104,6 +104,9 @@ fun CalendarScreen(vm: AppViewModel, state: AppState, onOpen: (Int) -> Unit) {
                             ) {
                                 Text("Reschedule")
                             }
+                            TextButton(onClick = { vm.cancelSchedule(entry.slotId) }) {
+                                Text("Delete")
+                            }
                         }
                     }
                 }

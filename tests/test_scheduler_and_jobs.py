@@ -57,6 +57,20 @@ def test_no_configured_slots_still_schedules(db, make_draft):
     assert slot.scheduled_at > datetime.now(UTC)
 
 
+def test_pending_schedule_can_be_deleted(db, make_draft):
+    from types import SimpleNamespace
+
+    from app.api.v1.schedule import cancel
+
+    draft = make_draft("A post I no longer want to schedule.")
+    slot = _approve_and_schedule(db, draft)
+
+    result = cancel(slot.id, db, SimpleNamespace(id="dev-1"))
+
+    assert result.status == ScheduleStatus.CANCELLED
+    assert draft.status == DraftStatus.CANCELLED
+
+
 # ------------------------------------------------------- double publish ----
 
 
