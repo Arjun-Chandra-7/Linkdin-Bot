@@ -172,3 +172,36 @@ def test_connection_status_values_never_imply_the_system_acted(db):
     assert "MARKED_CONNECTED" in values
     for forbidden in ("SENT", "INVITED", "REQUESTED", "CONNECTED"):
         assert forbidden not in values, f"status implies the system acted: {forbidden}"
+
+
+def test_people_discovery_uses_github_not_linkedin():
+    """Discovery must never scrape or search LinkedIn programmatically."""
+    from app.networking import discovery
+
+    source = inspect.getsource(discovery).lower()
+    # The only linkedin.com reference may be the search URL handed to the user.
+    assert "api.linkedin.com" not in source
+    assert "linkedin.com/search" in source, "expected a user-facing search handoff"
+    for banned in ("voyager", "li_at", "invitation", "sendinvite", "connect("):
+        assert banned not in source, f"discovery touches LinkedIn actions: {banned}"
+
+
+def test_discovery_only_links_to_a_search_the_user_clicks():
+    from app.networking.discovery import LINKEDIN_SEARCH, DiscoveredPerson, to_candidate
+
+    person = DiscoveredPerson(
+        name="Ada Lovelace", handle="ada", bio="AI engineer", company="Analytical",
+        profile_url=LINKEDIN_SEARCH.format(query="Ada+Lovelace"),
+        evidence="Contributes to x/y on GitHub", linkedin_known=False,
+    )
+    candidate = to_candidate(person)
+    assert candidate.profile_url.startswith("https://www.linkedin.com/search/")
+    assert candidate.name == "Ada Lovelace"
+
+
+def test_a_self_published_linkedin_url_is_preferred_over_a_search():
+    from app.networking.discovery import _linkedin_from_profile
+
+    assert _linkedin_from_profile({"blog": "https://linkedin.com/in/ada"}) == "https://linkedin.com/in/ada"
+    assert _linkedin_from_profile({"bio": "find me at linkedin.com/in/ada-l"}) == "https://linkedin.com/in/ada-l"
+    assert _linkedin_from_profile({"blog": "https://example.com"}) is None

@@ -414,6 +414,26 @@ def discover_connections(db: Session, payload: dict[str, Any]) -> dict[str, Any]
         for entry in raw
     ]
 
+    # People who contribute to the AI / developer-tooling repositories the user
+    # follows. Public GitHub data only; the handoff to LinkedIn is a search
+    # link the user clicks.
+    if payload.get("scan_github", True):
+        from app.database.enums import SourceType
+        from app.database.models import Source
+        from app.networking.discovery import discover_from_repo, to_candidate
+
+        github_sources = db.execute(
+            select(Source).where(Source.type == SourceType.GITHUB, Source.enabled.is_(True))
+        ).scalars().all()
+        for source in github_sources:
+            repo = (source.config or {}).get("repo")
+            if not repo:
+                continue
+            for person in discover_from_repo(
+                repo, token=(source.config or {}).get("token"), limit=4
+            ):
+                candidates.append(to_candidate(person))
+
     # Also pick up profile links appearing in ideas gathered from the user's
     # own sources. Small on purpose - quality over quantity, no mass activity.
     if payload.get("scan_sources", True):
