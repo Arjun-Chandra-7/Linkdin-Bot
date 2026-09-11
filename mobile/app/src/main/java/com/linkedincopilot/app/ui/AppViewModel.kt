@@ -76,6 +76,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         else -> UiError("Something went wrong.", e.message)
     }
 
+    /**
+     * A token the server no longer accepts.
+     *
+     * This happens when the device is revoked, or when the backend's database
+     * is reset or moved - the stored token then points at a device that no
+     * longer exists. Keeping the token in that state leaves the app in a shell
+     * that looks signed in but can load nothing, so the credential is dropped
+     * and the user is taken back to pairing, which is the only thing that
+     * fixes it.
+     */
+    private fun handleRejectedToken() {
+        repo.unpair()
+        _state.value = AppState(
+            paired = false,
+            message = "This device is no longer paired with the backend. Pair it again.",
+        )
+    }
+
     private inline fun run(crossinline block: suspend () -> Unit) {
         viewModelScope.launch {
             _state.value = _state.value.copy(loading = true, error = null)
@@ -84,6 +102,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 _state.value = _state.value.copy(loading = false)
             } catch (e: Throwable) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
+                if (e is ApiException && e.status == 401) {
+                    handleRejectedToken()
+                    return@launch
+                }
                 _state.value = _state.value.copy(loading = false, error = toUiError(e))
             }
         }
