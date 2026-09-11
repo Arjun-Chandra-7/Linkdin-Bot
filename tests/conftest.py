@@ -15,12 +15,25 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / "backend"))
 
 
+@pytest.fixture(autouse=True)
+def isolate_live_linkedin_credentials(monkeypatch):
+    """No test may inherit credentials capable of touching the real account."""
+    from app.config import get_settings
+
+    monkeypatch.setenv("LINKEDIN_PUBLISH_MODE", "manual")
+    monkeypatch.setenv("LINKEDIN_ACCESS_TOKEN", "")
+    monkeypatch.setenv("LINKEDIN_AUTHOR_URN", "")
+    monkeypatch.setenv("LINKEDIN_TOKEN_ISSUED_AT", "")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture()
 def db(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
     monkeypatch.setenv("SECRET_KEY", "test-secret-not-used-in-production")
     monkeypatch.setenv("LLM_PROVIDER", "mock")
-
     from app.config import get_settings
     from app.database.migrations import run_migrations
     from app.database.session import get_session_factory, reset_engine_for_tests

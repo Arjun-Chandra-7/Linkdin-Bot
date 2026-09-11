@@ -102,7 +102,8 @@ def main() -> int:
 
         if not args.no_loop:
             enqueue(db, "daily_loop", {}, idempotency_key="daily-loop-bootstrap")
-            print("  + queued the daily discovery loop")
+            enqueue(db, "network_loop", {}, idempotency_key="network-loop-bootstrap")
+            print("  + queued the daily content and networking discovery loops")
 
     print(f"\n{added} source(s) added.")
     if not args.github:

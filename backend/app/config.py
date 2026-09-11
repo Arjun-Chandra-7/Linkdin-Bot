@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     linkedin_access_token: str = ""
     linkedin_token_issued_at: str = ""
     linkedin_author_urn: str = ""  # e.g. urn:li:person:XXXX
-    linkedin_api_version: str = "202405"
+    linkedin_api_version: str = "202608"
 
     # ---- Jobs / scheduler ----
     job_tick_seconds: int = 20
