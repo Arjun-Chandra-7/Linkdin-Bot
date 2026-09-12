@@ -255,9 +255,8 @@ def test_a_self_published_linkedin_url_is_preferred_over_a_search():
 def test_health_endpoint_identifies_this_service():
     """Clients check this to be sure they reached the copilot and not whatever
     else happens to be listening on the port."""
-    from fastapi.testclient import TestClient
-
     from app.main import create_app
+    from fastapi.testclient import TestClient
 
     with TestClient(create_app()) as client:
         assert client.get("/health").json().get("service") == "linkedin-copilot"
