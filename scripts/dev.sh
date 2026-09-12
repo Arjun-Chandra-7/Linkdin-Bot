@@ -19,7 +19,7 @@ fi
 
 HOST="0.0.0.0"
 [[ "${1:-}" == "--local" ]] && HOST="127.0.0.1"
-PORT="${PORT:-8000}"
+PORT="${PORT:-8787}"
 
 if [[ ! -f .env ]]; then
   echo "No .env found; copying .env.example (offline mock provider, manual publishing)."

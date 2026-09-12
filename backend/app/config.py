@@ -27,7 +27,9 @@ class Settings(BaseSettings):
     # ---- App ----
     app_env: str = "development"
     host: str = "0.0.0.0"
-    port: int = 8000
+    # 8000 is the most-squatted port on any dev machine; a collision makes
+    # every client silently talk to the wrong service.
+    port: int = 8787
     log_level: str = "INFO"
     log_json: bool = False
 

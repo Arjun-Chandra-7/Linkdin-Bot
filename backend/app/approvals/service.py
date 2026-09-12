@@ -32,10 +32,18 @@ from app.database.base import utcnow
 from app.database.enums import (
     ApprovalAction,
     DraftStatus,
+    JobStatus,
     ScheduleStatus,
     VersionOrigin,
 )
-from app.database.models import Approval, Draft, DraftVersion, ScheduledPost, StyleFeedback
+from app.database.models import (
+    Approval,
+    Draft,
+    DraftVersion,
+    Job,
+    ScheduledPost,
+    StyleFeedback,
+)
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +105,35 @@ def add_version(
             invalidate_approvals(db, draft, invalidate_reason or "Content changed")
     db.flush()
     return version
+
+
+def cancel_pending_schedules(db: Session, draft: Draft, reason: str) -> int:
+    """Take down any schedule for this draft, and the job that would fire it."""
+    pending = (
+        db.execute(
+            select(ScheduledPost).where(
+                ScheduledPost.draft_id == draft.id,
+                ScheduledPost.status.in_([ScheduleStatus.PENDING, ScheduleStatus.PUBLISHING]),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    for slot in pending:
+        slot.status = ScheduleStatus.CANCELLED
+        slot.last_error = reason
+        # The publish job checks the slot before doing anything, but leaving it
+        # queued means a pointless wake-up and a confusing DEAD job later.
+        job = db.execute(
+            select(Job).where(Job.idempotency_key == f"publish:{slot.idempotency_key}")
+        ).scalar_one_or_none()
+        if job is not None and job.status in {JobStatus.QUEUED, JobStatus.RUNNING}:
+            job.status = JobStatus.CANCELLED
+            job.last_error = reason
+    if pending:
+        db.flush()
+        log_event(log, "SCHEDULE_CANCELLED", draft_id=draft.id, slots=len(pending), reason=reason)
+    return len(pending)
 
 
 def invalidate_approvals(db: Session, draft: Draft, reason: str) -> int:
@@ -315,6 +352,10 @@ def submit_decision(
 
     draft.status = target
     if action is ApprovalAction.REJECT:
+        # A post can be rejected after it was approved and scheduled. The
+        # schedule has to come down with it, or a cancelled-in-spirit post
+        # leaves a pending slot and a queued publish job behind.
+        cancel_pending_schedules(db, draft, "Rejected after scheduling")
         draft.rejection_reason = rejection_reason
         draft.rejection_note = note
         record_style_feedback(

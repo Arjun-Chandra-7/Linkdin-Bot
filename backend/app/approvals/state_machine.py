@@ -25,9 +25,14 @@ ALLOWED: dict[S, frozenset[S]] = {
     # An approval can be invalidated by an edit, which sends the post back for
     # review rather than letting stale consent stand.
     S.APPROVED: frozenset({S.SCHEDULED, S.READY_FOR_REVIEW, S.REJECTED, S.CANCELLED}),
-    S.SCHEDULED: frozenset({S.PUBLISHING, S.READY_FOR_REVIEW, S.CANCELLED, S.FAILED}),
-    # Manual mode parks here while the user posts; they can also abandon it.
-    S.PUBLISHING: frozenset({S.PUBLISHED, S.FAILED, S.CANCELLED}),
+    # Changing your mind about a scheduled post is ordinary, not exceptional:
+    # rejecting it cancels the schedule and feeds the writer the reason.
+    S.SCHEDULED: frozenset(
+        {S.PUBLISHING, S.READY_FOR_REVIEW, S.REJECTED, S.CANCELLED, S.FAILED}
+    ),
+    # Manual mode parks here while the user posts; they can also abandon it or
+    # decide against it before anything goes out.
+    S.PUBLISHING: frozenset({S.PUBLISHED, S.FAILED, S.CANCELLED, S.REJECTED}),
     S.PUBLISHED: frozenset(),
     S.REJECTED: frozenset(),
     S.CANCELLED: frozenset(),

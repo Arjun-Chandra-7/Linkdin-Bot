@@ -250,3 +250,14 @@ def test_a_self_published_linkedin_url_is_preferred_over_a_search():
     assert _linkedin_from_profile({"blog": "https://linkedin.com/in/ada"}) == "https://linkedin.com/in/ada"
     assert _linkedin_from_profile({"bio": "find me at linkedin.com/in/ada-l"}) == "https://linkedin.com/in/ada-l"
     assert _linkedin_from_profile({"blog": "https://example.com"}) is None
+
+
+def test_health_endpoint_identifies_this_service():
+    """Clients check this to be sure they reached the copilot and not whatever
+    else happens to be listening on the port."""
+    from fastapi.testclient import TestClient
+
+    from app.main import create_app
+
+    with TestClient(create_app()) as client:
+        assert client.get("/health").json().get("service") == "linkedin-copilot"

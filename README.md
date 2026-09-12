@@ -127,7 +127,7 @@ its own approval.
 
 | Surface | For |
 |---|---|
-| **Desktop console** (`http://localhost:8000/app/`) | Reviewing and editing at a desk. Full width, keyboard-driven. |
+| **Desktop console** (`http://localhost:8787/app/`) | Reviewing and editing at a desk. Full width, keyboard-driven. |
 | **Android app** | Approving from your phone, including offline. |
 | **Jarvis voice agent** | "Hey Jarvis, open LinkedIn stats" — opens the console and reads the numbers aloud. See `docs/jarvis.md`. |
 
@@ -145,8 +145,8 @@ cp .env.example .env          # defaults are safe: offline mock LLM, manual publ
 ./scripts/dev.sh              # creates the venv, installs deps, starts the backend
 ```
 
-The backend listens on `0.0.0.0:8000` so your phone can reach it. API docs at
-`http://localhost:8000/docs`.
+The backend listens on `0.0.0.0:8787` so your phone can reach it. API docs at
+`http://localhost:8787/docs`.
 
 Then seed some sources and start the daily loop:
 
@@ -242,7 +242,7 @@ highest-value source there is, since it is first-hand.
 ./scripts/dev.sh              # run the backend
 ./scripts/test.sh             # run the test suite
 ./scripts/build-mobile.sh     # build the APK
-python scripts/e2e_check.py --base http://127.0.0.1:8000   # full acceptance run
+python scripts/e2e_check.py --base http://127.0.0.1:8787   # full acceptance run
 ```
 
 `e2e_check.py` walks the entire product flow against a running backend and

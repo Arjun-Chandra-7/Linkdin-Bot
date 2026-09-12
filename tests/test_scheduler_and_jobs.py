@@ -269,3 +269,41 @@ def test_reschedule_updates_slot_and_draft(db, make_draft):
     db.refresh(draft)
     assert slot.scheduled_at == new_time
     assert draft.proposed_publish_at == new_time
+
+
+def test_a_scheduled_post_can_be_rejected(db, make_draft):
+    """Changing your mind after scheduling is ordinary, not an error.
+
+    This used to fail with "Cannot move a post from SCHEDULED to REJECTED",
+    leaving no way to stop a post except cancelling the slot separately.
+    """
+    from app.database.models import Job
+
+    draft = make_draft()
+    slot = _approve_and_schedule(db, draft)
+    assert draft.status == DraftStatus.SCHEDULED
+
+    submit_decision(
+        db,
+        draft_id=draft.id,
+        device_id="dev-1",
+        action=ApprovalAction.REJECT,
+        rejection_reason="NOT_INTERESTING",
+    )
+    db.commit()
+
+    assert draft.status == DraftStatus.REJECTED
+    # The schedule and its queued job must come down with it.
+    assert slot.status == ScheduleStatus.CANCELLED
+    job = (
+        db.query(Job)
+        .filter(Job.idempotency_key == f"publish:{slot.idempotency_key}")
+        .one_or_none()
+    )
+    assert job is None or job.status == JobStatus.CANCELLED
+
+    # And it still cannot be published afterwards.
+    result = publish_post(db, {"scheduled_post_id": slot.id})
+    db.commit()
+    assert "skipped" in result or result.get("blocked")
+    assert db.query(PublishedPost).count() == 0
