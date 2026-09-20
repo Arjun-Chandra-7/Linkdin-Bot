@@ -22,6 +22,10 @@ from app.database.models import PublishedPost, StyleFeedback
 log = logging.getLogger(__name__)
 
 MIN_SIGNALS = 4  # below this, preferences are noise
+
+# The shortest band worth learning towards. See preferred_length_range for why a
+# floor is needed at all.
+FLOOR = (1200, 2000)
 _WORD = re.compile(r"[a-z][a-z'-]+")
 
 
@@ -130,4 +134,12 @@ def preferred_length_range(db: Session, default: tuple[int, int]) -> tuple[int, 
     high = lengths[(3 * len(lengths)) // 4]
     if high - low < 300:
         high = low + 300
-    return int(low), int(high)
+
+    # Learning length from what was published is a loop that only tightens. A run of short posts
+    # teaches "short", which produces shorter posts, which teach shorter still — and there is
+    # nothing in the history to push the other way, because a post that was never written cannot
+    # be measured. The floor keeps that loop from collapsing: history can widen the band or move
+    # it up, never shrink it below the length at which a post can actually carry an argument.
+    low = max(int(low), FLOOR[0])
+    high = max(int(high), FLOOR[1])
+    return low, high

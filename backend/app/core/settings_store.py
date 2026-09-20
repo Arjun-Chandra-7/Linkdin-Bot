@@ -63,7 +63,7 @@ DEFAULTS: dict[str, Any] = {
     "batch_low_priority_notifications": True,
     "quiet_hours": {"start": "22:30", "end": "07:30"},
     # --- Writing preferences (seeded, then refined by the learning engine) ---
-    "preferred_length_range": [700, 1400],
+    "preferred_length_range": [1600, 2800],
     "banned_phrases": [],
 }
 

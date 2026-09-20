@@ -33,6 +33,17 @@ What good looks like:
 - A real conclusion or open question, not a motivational sign-off.
 - Admitting uncertainty where it exists.
 
+The reader must finish knowing something they did not know before. That is the whole job. A post that only lists things every engineer in the feed already believes has failed, however cleanly it is written.
+
+So each post carries at least one of these, and says it plainly:
+- A mechanism explained properly: not that something is fast, but what makes it fast, and what it gives up in exchange.
+- A number with its source and its conditions attached. What was measured, on what, against what.
+- A constraint or trade-off most people have not hit yet, and why it bites.
+- A specific detail from the actual work: the error, the limit, the version, the flag, the thing the documentation does not mention.
+- A widely repeated claim that is wrong or incomplete, with what is actually the case.
+
+Three bullet points is not a post. If the substance fits in three short lines it is an observation, not an article, and it should either be written as one properly or given the depth it needs. Bullets are for genuinely parallel items; an argument belongs in prose.
+
 Write only the post body. No preamble, no title, no surrounding quotes."""
 
 FORMAT_GUIDANCE: dict[PostType, str] = {
@@ -41,8 +52,10 @@ FORMAT_GUIDANCE: dict[PostType, str] = {
         "to be, and what you decided. Concrete over general."
     ),
     PostType.TECHNICAL_BREAKDOWN: (
-        "Format: TECHNICAL BREAKDOWN. Explain one mechanism properly. Assume the "
-        "reader is technical. Depth over breadth."
+        "Format: TECHNICAL BREAKDOWN. Explain one mechanism properly, end to end: what it "
+        "does, what makes it work, what it costs, and where it stops working. Assume the "
+        "reader is technical and bored of overviews. Depth over breadth — one mechanism "
+        "understood beats five mentioned."
     ),
     PostType.FAILURE_AND_FIX: (
         "Format: FAILURE AND FIX. Something broke. Say what, why it was not obvious, "
@@ -53,9 +66,14 @@ FORMAT_GUIDANCE: dict[PostType, str] = {
         "strongest counter-argument acknowledged honestly."
     ),
     PostType.NEWS_WITH_ANALYSIS: (
-        "Format: NEWS WITH ANALYSIS. Summarise the development in one or two lines, "
-        "then spend most of the post on what it means for people building things. "
-        "Never post the news alone."
+        "Format: NEWS WITH ANALYSIS. Summarise the development in one or two lines, then "
+        "spend most of the post on what it means for people building things. Never post the "
+        "news alone — the headline is already in everyone's feed and adds nothing. "
+        "The value is in what is not in the announcement: the constraint it quietly implies, "
+        "the number that is measured differently than it sounds, what it changes for the "
+        "person who has to integrate it on Monday, and what the release notes leave out. "
+        "If the only honest reading is that it changes little, say that and say why — a "
+        "sober take on an over-hyped release is worth more than joining in."
     ),
     PostType.MILESTONE: (
         "Format: MILESTONE. Something reached a real state. Say what works now that "
@@ -91,7 +109,7 @@ def build_writer_prompt(
     evidence: list[str] | None = None,
     uncertainty: str | None = None,
     variant: str = "A",
-    target_range: tuple[int, int] = (700, 1400),
+    target_range: tuple[int, int] = (1600, 2800),
     style_notes: list[str] | None = None,
 ) -> str:
     parts = [f"TOPIC: {topic}"]
@@ -118,8 +136,15 @@ def build_writer_prompt(
             + "\n".join(f"- {note}" for note in style_notes)
         )
 
-    low, high = target_range
-    parts.append(f"LENGTH: roughly {low}-{high} characters.")
+    # One format is short on purpose, and the length band must not argue with it. A
+    # SHORT_OBSERVATION stretched to two thousand characters is no longer an observation.
+    low, high = (350, 700) if post_type is PostType.SHORT_OBSERVATION else target_range
+    parts.append(
+        f"LENGTH: roughly {low}-{high} characters. Reach it with substance — another "
+        f"mechanism, another constraint, the counter-argument, what you would check next — "
+        f"never by restating a point already made or padding with generalities. If there is "
+        f"genuinely not that much to say, write less and say so plainly."
+    )
     return "\n\n".join(p for p in parts if p)
 
 
