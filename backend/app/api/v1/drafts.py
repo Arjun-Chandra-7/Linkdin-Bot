@@ -210,6 +210,52 @@ def create_from_idea(
     return draft_detail(db, outcome.draft)
 
 
+@router.post("/write-next", response_model=DraftDetail)
+def write_next(
+    db: Session = Depends(get_db),
+    device: Device = Depends(get_current_device),
+) -> DraftDetail:
+    """Write a post now, from the best idea the copilot already has.
+
+    The existing route needs a topic typed in, which is the right thing when you have one and an
+    obstacle when you do not: the copilot has been scoring ideas all along and the queue is empty
+    only because nothing has told it to write. This picks the highest-scoring idea that has not
+    been drafted yet and runs the writer on it.
+
+    Ideas already spoken for are skipped, so pressing the button twice writes two different posts
+    rather than the same one again.
+    """
+    from app.agents.writer.agent import generate_drafts
+    from app.database.enums import IdeaStatus
+    from app.database.models import Draft, Idea
+
+    spoken_for = select(Draft.idea_id).where(Draft.idea_id.is_not(None))
+    idea = db.execute(
+        select(Idea)
+        .where(Idea.status.in_((IdeaStatus.SCORED, IdeaStatus.RESEARCHED)))
+        .where(Idea.id.not_in(spoken_for))
+        .order_by(Idea.final_score.desc(), Idea.id.desc())
+        .limit(1)
+    ).scalar_one_or_none()
+
+    if idea is None:
+        raise NotFoundError(
+            "There is no idea waiting to be written. Run discovery, or write from your own note."
+        )
+
+    outcome = generate_drafts(db, idea)
+    db.commit()
+    if outcome.draft is None:
+        # The quality gate rejecting its own best idea is worth saying plainly rather than
+        # returning an empty success the screen cannot show.
+        raise NotFoundError(
+            f"Wrote from “{idea.topic}” but the quality gate held it back. Try again, or "
+            f"write from your own note."
+        )
+    log_event(log, "DRAFT_WRITTEN_ON_DEMAND", idea_id=idea.id, device_id=device.id)
+    return draft_detail(db, outcome.draft)
+
+
 @router.post("/{draft_id}/rewrite", response_model=DraftDetail)
 def rewrite_draft(
     draft_id: int,

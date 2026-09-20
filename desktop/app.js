@@ -243,24 +243,89 @@ function componentRows(status) {
 }
 
 // ------------------------------------------------------------ approvals ----
+// Drafts ticked for discarding. Cleared whenever the queue is redrawn, so a selection can never
+// outlive the list it was made against and take the wrong draft with it.
+let SELECTED = new Set();
+
 async function viewApprovals(view) {
   const res = await api('/api/v1/drafts');
   STATE.drafts = res.items;
+  SELECTED = new Set();
 
   if (!res.items.length) {
     view.innerHTML = emptyState('Nothing to review',
       'When the copilot writes something worth your time it appears here. Weak drafts are rejected before they ever reach this screen.',
-      `<button class="btn" onclick="openIdeaDialog()">Write a custom idea</button>`);
+      `<button class="btn primary" onclick="writeNextPost(this)">Write a post now</button>
+       <button class="btn" onclick="openIdeaDialog()">Write a custom idea</button>`);
     return;
   }
 
   view.innerHTML = `
     <div class="row between" style="margin-bottom:14px">
       <span class="muted small">${res.total} awaiting your decision</span>
-      <button class="btn" onclick="openIdeaDialog()">Write a custom idea</button>
+      <span class="row" style="gap:8px">
+        <button class="btn primary" onclick="writeNextPost(this)">Write a post now</button>
+        <button class="btn" onclick="openIdeaDialog()">Write a custom idea</button>
+      </span>
+    </div>
+    <div class="row between" id="select-bar" hidden
+         style="margin-bottom:12px;padding:8px 12px;border:1px solid var(--accent-dim);border-radius:8px">
+      <span class="small"><b id="select-count">0</b> selected</span>
+      <span class="row" style="gap:8px">
+        <button class="btn ghost sm" onclick="clearSelection()">Clear</button>
+        <button class="btn sm" id="discard-selected" onclick="discardSelected(this)">Discard selected</button>
+      </span>
     </div>
     ${res.items.map(draftCard).join('')}
   `;
+}
+
+function toggleSelected(id, box, event) {
+  // The card itself opens the draft; the checkbox must not do both.
+  if (event) event.stopPropagation();
+  if (box.checked) SELECTED.add(id); else SELECTED.delete(id);
+  const bar = document.getElementById('select-bar');
+  const count = document.getElementById('select-count');
+  if (count) count.textContent = String(SELECTED.size);
+  if (bar) bar.hidden = SELECTED.size === 0;
+}
+
+function clearSelection() {
+  SELECTED = new Set();
+  document.querySelectorAll('.draft-pick').forEach(b => { b.checked = false; });
+  const bar = document.getElementById('select-bar');
+  if (bar) bar.hidden = true;
+}
+
+async function discardSelected(btn) {
+  const ids = [...SELECTED];
+  if (!ids.length) return;
+  const many = ids.length === 1 ? 'this draft' : `these ${ids.length} drafts`;
+  if (!confirm(`Discard ${many}? The writer learns from it, and they do not publish.`)) return;
+  btn.disabled = true; btn.textContent = 'Discarding…';
+  try {
+    const res = await api('/api/v1/approvals/discard', {
+      method: 'POST',
+      body: JSON.stringify({ draft_ids: ids, rejection_reason: 'NOT_INTERESTING' }),
+    });
+    toast(res.message);
+    go('approvals');
+  } catch (e) {
+    toast(e.message, true);
+    btn.disabled = false; btn.textContent = 'Discard selected';
+  }
+}
+
+async function writeNextPost(btn) {
+  btn.disabled = true; btn.textContent = 'Writing…';
+  try {
+    const d = await api('/api/v1/drafts/write-next', { method: 'POST' });
+    toast('Draft ready.');
+    go('draft', d.id);          // straight to it, so it can be read and approved
+  } catch (e) {
+    toast(e.message, true);
+    btn.disabled = false; btn.textContent = 'Write a post now';
+  }
 }
 
 function draftCard(d) {
@@ -269,7 +334,11 @@ function draftCard(d) {
   return `
     <div class="card clickable" onclick="go('draft', ${d.id})">
       <div class="row between">
-        <span class="pill info">${esc(titleCase(d.post_type))}</span>
+        <span class="row" style="gap:8px;align-items:center">
+          <input type="checkbox" class="draft-pick" title="Select for discarding"
+                 onclick="toggleSelected(${d.id}, this, event)">
+          <span class="pill info">${esc(titleCase(d.post_type))}</span>
+        </span>
         <span class="pill ${STATUS_CLASS[d.status] || ''}">${esc(STATUS_LABEL[d.status] || d.status)}</span>
       </div>
       <div style="font-weight:600;margin-top:10px;font-size:15px">${esc(d.hook || d.title)}</div>
